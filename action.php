@@ -33,25 +33,13 @@ class action_plugin_settingstree extends DokuWiki_Action_Plugin {
 			$data = array('error'=>true,'msg'=>'invalid security token!');
 		}else{
 		switch($INPUT->str('operation')){
-			case 'explorertree_branch':
-				if (!($helper = plugin_load('helper', 'explorertree'))){
+			case 'loadlevel':
+				if (!($helper = plugin_load('helper', 'settingstree'))){
 					$data = array('error'=>true,'msg'=>"Can't load tree helper.");
 					break;
 				}
-				$data = array('html' => $helper->htmlExplorer($INPUT->str('env'),ltrim(':'.$INPUT->str('itemid')),':') );
-				if (!$data['html']) {$data['error'] = true; $data['msg'] = "Can't load tree html.";}
-				break;
-			case 'callback':
-				if (!($helper = plugin_load('helper', 'explorertree'))){
-					$data = array('error'=>true,'msg'=>"Can't load tree helper.");
-					break;
-				}
-				$route = $helper->loadRoute($INPUT->str('route'),$INPUT->arr('loader'));
-				if (!$route || !is_callable(@$route['callbacks'][$INPUT->str(event)])) {
-					$data = array('error'=>true,'msg'=>"Can't load callback '".$INPUT->str('event')."'for '".$INPUT->str('route')."'!");
-				}
-				$data = @call_user_func_array($route['callbacks'][$INPUT->str(event)],array($INPUT->str('itemid')));
-				if (!is_array($data)) $data = array('error'=>true,'msg'=>"Callback for '".$INPUT->str('event')."' does not exists!");
+				$data = array('html' => $helper->showHtml($INPUT->str('pluginname'),ltrim($INPUT->str('path')),':') );
+				if (!$data['html']) {$data['error'] = true; $data['msg'] = "Can't load level html.";}
 				break;
 			default:
 				$data = array('error'=>true,'msg'=>'Unknown operation: '.$INPUT->str('operation'));

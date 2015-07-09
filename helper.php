@@ -5,18 +5,20 @@ if (!defined('DOKU_INC')) die();
 
 if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN', DOKU_INC.'lib/plugins/');
 
+if (!defined('DOKU_SETTINGS_DIR')) define('DOKU_SETTINGS_DIR',DOKU_INC.'data/settings');
+
+require_once('settings/settingshierarchy.class.php');
+
+
 class helper_plugin_settingstree extends DokuWiki_Plugin {
 
 	private $memcache = false;			// memcache
-	
-	private $options = array(
-	);
-
-	private $_settings = array();		// settings options/definitions
-	private $_settingstree = array();	// settings hierarchy for the definitions
-
 	private $explorer_helper = null;
 	private $explorer_registered = false;
+
+
+
+	private $_settingsHierarchy = array();	// settings hierarchy for a plugin
 	
 	function get_explorer(){
 		if (!$this->explorer_helper){
@@ -34,14 +36,14 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 					'method' => 'init_explorertree',
 				),
 				'vars' => array(
-//					'class' => 'explorertree',
+					'class' => 'settingstree_explorer',
 //					'id' => 'mytreeid',
 				),
 				'callbacks' => array(
 //					'page_selected_cb' => array($this,'pageselected'),
-//					'page_selected_js' => 'my_selected_js',
+					'page_selected_js' => 'settingstree_selectlevel',
 //					'ns_selected_cb' => array($this,'nsselected'),
-//					'ns_selected_js' => 'my_selected_js',
+					'ns_selected_js' => 'settingstree_selectlevel',
 				),
 			));
 			$this->explorer_registered = true;
@@ -56,30 +58,6 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 		return $this->memcahce;
 	}
 	
-	private function _getSettingsOptions($name){
-		if (!@$this->_settings[$name]){
-			if (!file_exists(DOKU_INC."data/settings")){
-				if (!mkdir(DOKU_INC."data/settings")){
-					trigger_error("Cannot create settings directory:'".DOKU_INC."data/settings'!",E_USER_ERROR);
-				}
-			}elseif(!is_dir(DOKU_INC."data/settings")){
-					trigger_error("The '".DOKU_INC."data/settings' is not a directory!",E_USER_ERROR);
-			}
-			$name_esc = preg_replace_callback('/(\W)/',
-				function($m){ return "-".ord($m[1])."-"; },
-				$name);
-
-			if (file_exists(DOKU_INC."data/settings/{$name_esc}.json")){
-				if ($json = file_get_contents(DOKU_INC."data/settings/{$name_esc}.json")){
-					if ($data = json_decode($json,true)){
-						$this->_settings[$name] = $data;
-					}
-				}
-			}
-		}
-		return $this->_settings[$name];
-	}
-	
 	
 	
     /**
@@ -88,6 +66,15 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
      * These can be overriden by plugins using this class
      */
     function __construct() {
+		// checks if data/settings directory exists, attempts to create it, or error if it's not possible.
+		if (!file_exists(DOKU_SETTINGS_DIR)){
+			if (!mkdir(DOKU_SETTINGS_DIR)){
+				trigger_error("Cannot create settings directory:'".DOKU_SETTINGS_DIR."'!",E_USER_ERROR);
+			}
+		}elseif(!is_dir(DOKU_INC."data/settings")){
+			trigger_error("The '".DOKU_SETTINGS_DIR."' is not a directory!",E_USER_ERROR);
+		}
+		settingswrapper::$plugin = $this;	// we need a plugin to use getLang() ...
 	}
 	
     function getMethods() {
@@ -95,25 +82,29 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
         return $result;
     }
 
-	function getlocal($key,$pluginname){
-		if (!$this->localconfig){
-			$conf = array();
-			require (DOKU_INC."conf/local.php");
-			$this->localconfig = $conf;
+	function checkSettingsVersion($pluginname,$version){
+		if ($this->cache() && $cache_ver = $this->cache()->get("plugin_settringstree_settingsversion_{$pluginname}")){
+			return ((int)$cache_ver) < $version;
 		}
-		return @$this->localconfig['plugin'][$pluginname][$key];
+		return @filemtime(DOKU_SETTINGS_DIR."/{$pluginname}.meta.json") < $version;
 	}
-	function getprotected($key,$pluginname){
-		if (!$this->protectedconfig){
-			$conf = array();
-			require (DOKU_INC."conf/local.protected.php");
-			$this->protectedconfig = $conf;
-		}
-		return @$this->protectedconfig['plugin'][$pluginname][$key];
-	}
+
 	
-	function registerSettingsOptions($pluginname,$options){
-		$this->_getSettingsOptions($pluginname);
+	function registerSettings($pluginname,$version,$meta,$defaults){
+		if (!file_put_contents($file = DOKU_SETTINGS_DIR."/{$pluginname}.meta.json",json_encode($meta))
+			||
+			!file_put_contents($file = DOKU_SETTINGS_DIR."/{$pluginname}.defaults.json",json_encode($defaults))
+		){
+			trigger_error("Can not store settings for {$pluginname} to {$file}!",E_USER_ERROR);
+		}
+		if ($c = $this->cache()){
+			$TTL = 300;
+			$c->set("plugin_settringstree_settingsversion_{$pluginname}",$version,$TTL);
+			$c->set("plugin_settringstree_settingsmeta_{$pluginname}",$meta,$TTL);
+			$c->set("plugin_settringstree_settingsdefaults_{$pluginname}",$defaults,$TTL);
+		}
+		
+/*		$this->_getSettingsOptions($pluginname);
 		require_once(DOKU_INC.'lib/plugins/config/settings/config.class.php');
 		$meta = array(); $conf = array();
 		require (DOKU_INC."lib/plugins/{$pluginname}/conf/default.php");
@@ -132,24 +123,55 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 				$this->settings[$key] = new $class($key,$param);
 				$this->settings[$key]->initialize(@$conf[$key],@$this->getlocal($key,$pluginname),@$this->getprotected($key,$pluginname));
 			}
+		}*/
+	}
+	
+	private function _loadSettings($pluginname){
+		if (!$this->_settingsHierarchy[$pluginname]){
+			$meta = json_decode(@file_get_contents($file = DOKU_SETTINGS_DIR."/{$pluginname}.meta.json"),true);
+			if (!is_array($meta)){
+				trigger_error("Could not load file: {$file}",E_USER_ERROR);
+			}
+			$defaults = json_decode(@file_get_contents($file = DOKU_SETTINGS_DIR."/{$pluginname}.defaults.json"),true);
+			if (!is_array($defaults)){
+				trigger_error("Could not load file: {$file}",E_USER_ERROR);
+			}
+			$values = json_decode(@file_get_contents(DOKU_SETTINGS_DIR."/{$pluginname}.json"),true);
+			if (!is_array($values)){ $values = array();	}
+			$this->_settingsHierarchy[$pluginname] = new settingshierarchy($pluginname,$meta,$defaults,$values);
 		}
+		return $this->_settingsHierarchy[$pluginname];
 	}
 	
 	
-	function showDialog($pluginname,$folder){
+	function showAdmin($pluginname,$folder){
+		$set = $this->_loadSettings($pluginname);
 		$e = $this->init_explorertree();
 		$ret = $e->htmlExplorer('settingstree',':');
-		$ret .= "<div id='config__manager'><fieldset><legend>BlaBla</legend><div class='table'><table class='inclide'><tbody>";
-		foreach ($this->settings as $key => $settings){
-			list($label,$input) = $this->settings[$key]->html($this);
-			$cssclass = $this->settings[$key]->is_default() ? ' class="default"' : ($this->settings[$key]->is_protected() ? ' class="protected"' : '');
-			$has_error = $this->settings[$key]->error() ? ' class="value error"' : ' class="value"';
-            $has_icon = $this->settings[$key]->caution() ? '<img src="'.DOKU_PLUGIN_IMAGES.$this->settings[$key]->caution().'.png" alt="'.$this->settings[$key]->caution().'" title="'.$this->getLang($this->settings[$key]->caution()).'" />' : '';
-			$ret .= "<tr {$cssclass}><td class='label'><span class='outkey'>{$this->settings[$key]->_out_key(true,true)}</span>{$has_icon}{$label}</td><td {$has_error}>{$input}</td></tr>";
-		}
-		$ret .= "</tbody></table></div></fieldset></div>";
+		$ret .= "<div id='settingstree_area'>";
+		$level = $set->getLevel($folder);
+		$ret .= $level->showHtml();
+		$ret .="</div>";
+		$ret .= "<script type='text/javascript'>	jQuery('#settingstree_area').settingsTree({$this->_treeOpts($pluginname)});</script>";
 		return $ret;
 	}
+	
+	function showHtml($pluginname,$folder){
+		$set = $this->_loadSettings($pluginname);
+		$level = $set->getLevel($folder);
+		header('content-type','text/html');
+		return $level->showHtml();
+	}
+	
+	
+	private function _treeOpts($pluginname){
+		return json_encode(array(
+			'token'=> getSecurityToken(),
+			'pluginname'=> $pluginname,
+			
+		));
+	}
+
 	
 /*	function registerRoute($name,array $options){
 		$this->routes[$name] = array_replace_recursive ($this->options,$options);

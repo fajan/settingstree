@@ -1,0 +1,49 @@
+
+
+ul.settingstree_explorer{
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+.settingstree_explorer_root{
+  font-size: 90%;
+  width: 25%;
+  margin: 1em;
+  min-height: 300px;
+  max-height: 800px;
+  float: left;
+  overflow: auto;
+  border: 1px solid #ccc;
+  text-align: left;
+}
+
+.settingstree_explorer_root .folder > .li > a:before,
+.settingstree_explorer_root.folder > .li > a:before{
+	content: "";
+	display: inline-block;
+	width: 9px; height: 9px;
+	margin-right: 5px;
+}
+.settingstree_explorer_root .folder.open> .li > a:before,
+.settingstree_explorer_root.folder.open> .li > a:before{
+	background: url('../../images/minus.gif');
+}
+.settingstree_explorer_root .folder.closed> .li > a:before,
+.settingstree_explorer_root.folder.closed> .li > a:before{
+	background: url('../../images/plus.gif');
+}
+.settingstree_explorer_root .folder.closed> ul.settingstree_explorer,
+.settingstree_explorer_root.folder.closed> ul.settingstree_explorer{
+	display: none;
+}
+.settingstree_explorer_root .folder.open.loading> .li:after, 
+.settingstree_explorer_root.folder.open.loading> .li:after{
+	content: "Loading...";
+	margin-left: 10px;
+	display: block;
+}
+
+.settingstree_explorer_selected{
+	font-weight: bold;
+}
+
