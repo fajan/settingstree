@@ -1,7 +1,7 @@
 base    settingstree
 author  János Fekete
 email   jan@fjan.eu
-date    2015-07-13
+date    2015-07-16
 name    Settings tree helper plugin
 desc    DokuWiki helper and admin for setting up settings based on NS/page hierarchy to a plugin
 url     https://www.dokuwiki.org/plugin:settingstree
