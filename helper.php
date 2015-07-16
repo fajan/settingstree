@@ -54,6 +54,7 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 	function cache(){
 		if ($this->memcache === false){
 			$this->memcache = plugin_load('helper','memcache');
+			settingshierarchy::$cache = $this->memcahce;
 		}
 		return $this->memcahce;
 	}
@@ -74,7 +75,9 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 		}elseif(!is_dir(DOKU_INC."data/settings")){
 			trigger_error("The '".DOKU_SETTINGS_DIR."' is not a directory!",E_USER_ERROR);
 		}
-		settingswrapper::$plugin = $this;	// we need a plugin to use getLang() ...
+		$this->cache();
+		settingshierarchy::$helper = $this;
+
 	}
 	
     function getMethods() {
@@ -98,68 +101,78 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 			trigger_error("Can not store settings for {$pluginname} to {$file}!",E_USER_ERROR);
 		}
 		if ($c = $this->cache()){
-			$TTL = 300;
+			$TTL = 0;
 			$c->set("plugin_settringstree_settingsversion_{$pluginname}",$version,$TTL);
 			$c->set("plugin_settringstree_settingsmeta_{$pluginname}",$meta,$TTL);
 			$c->set("plugin_settringstree_settingsdefaults_{$pluginname}",$defaults,$TTL);
 		}
-		
-/*		$this->_getSettingsOptions($pluginname);
-		require_once(DOKU_INC.'lib/plugins/config/settings/config.class.php');
-		$meta = array(); $conf = array();
-		require (DOKU_INC."lib/plugins/{$pluginname}/conf/default.php");
-		require (DOKU_INC."lib/plugins/{$pluginname}/conf/metadata.php");
-		$this->settings = array();
-		foreach ($meta as $key => $met){
-			$class = $meta[$key][0];
-			if($class && class_exists('setting_'.$class)){
-				$class = 'setting_'.$class;
-			} else {
-				
-			}
-			$param = $met;
-			array_shift($param);
-			if ($class){
-				$this->settings[$key] = new $class($key,$param);
-				$this->settings[$key]->initialize(@$conf[$key],@$this->getlocal($key,$pluginname),@$this->getprotected($key,$pluginname));
-			}
-		}*/
 	}
 	
 	private function _loadSettings($pluginname){
 		if (!$this->_settingsHierarchy[$pluginname]){
-			$meta = json_decode(@file_get_contents($file = DOKU_SETTINGS_DIR."/{$pluginname}.meta.json"),true);
+			$c = $this->cache();
+			if (!$c || !($meta = $c->get("plugin_settringstree_settingsmeta_{$pluginname}"))){
+				$meta = json_decode(@file_get_contents($file = DOKU_SETTINGS_DIR."/{$pluginname}.meta.json"),true);
+			}
 			if (!is_array($meta)){
 				trigger_error("Could not load file: {$file}",E_USER_ERROR);
 			}
-			$defaults = json_decode(@file_get_contents($file = DOKU_SETTINGS_DIR."/{$pluginname}.defaults.json"),true);
+			if (!$c || !($defaults = $c->get("plugin_settringstree_settingsdefaults_{$pluginname}"))){
+				$defaults = json_decode(@file_get_contents($file = DOKU_SETTINGS_DIR."/{$pluginname}.defaults.json"),true);
+			}
 			if (!is_array($defaults)){
 				trigger_error("Could not load file: {$file}",E_USER_ERROR);
 			}
-			$values = json_decode(@file_get_contents(DOKU_SETTINGS_DIR."/{$pluginname}.json"),true);
+			if (!$c || !($values = $c->get("plugin_settringstree_settingsvalues_{$pluginname}"))){
+				$values = json_decode(@file_get_contents(DOKU_SETTINGS_DIR."/{$pluginname}.json"),true);
+			}
 			if (!is_array($values)){ $values = array();	}
 			$this->_settingsHierarchy[$pluginname] = new settingshierarchy($pluginname,$meta,$defaults,$values);
 		}
 		return $this->_settingsHierarchy[$pluginname];
 	}
-	
+	private function _storeValues($pluginname,settingshierarchy $set){
+		$c = $this->cache();
+		$values = $set->getValueTree();
+		if ($ret = file_put_contents(DOKU_SETTINGS_DIR."/{$pluginname}.json",json_encode($values)) !== false){
+			if ($c){	// we don't update cache, if we can't save the values to the filesystem. It would be bad to have correct data until cache is flushed then suddenly something corrupt...
+				$TTL = 0;
+				$c->set("plugin_settringstree_settingsvalues_{$pluginname}",$values,$TTL);
+			}
+		}
+		return $ret;
+	}
 	
 	function showAdmin($pluginname,$folder){
 		$set = $this->_loadSettings($pluginname);
 		$e = $this->init_explorertree();
 		$ret = $e->htmlExplorer('settingstree',':');
-		$ret .= "<div id='settingstree_area'>";
+		$ret .= "<form id='settingstree_area' method='GET' onsubmit='return false;'>";
 		$level = $set->getLevel($folder);
 		$ret .= $level->showHtml();
-		$ret .="</div>";
+		$ret .="</form>";
 		$ret .= "<script type='text/javascript'>	jQuery('#settingstree_area').settingsTree({$this->_treeOpts($pluginname)});</script>";
 		return $ret;
 	}
-	
+	function saveLevel($pluginname,$folder,$data,&$results){
+		$set = $this->_loadSettings($pluginname);
+		$level = $set->getLevel($folder);
+//		header('content-type','text/html');
+		if ($level->checkValues($data) && $this->_storeValues($pluginname,$set)){ // the values are okay, and it managed to save to file/cache
+			$results['error'] = false;
+			$results['msg'] = $this->getLang('changes_saved');
+			$results['success'] = true;
+		}else{
+			$results['error'] = true;
+			$results['msg'] = $this->getLang('changes_not_saved');
+			$results['success'] = false;
+		}
+		return $level->showHtml();
+	}
 	function showHtml($pluginname,$folder){
 		$set = $this->_loadSettings($pluginname);
 		$level = $set->getLevel($folder);
-		header('content-type','text/html');
+//		header('content-type','text/html');
 		return $level->showHtml();
 	}
 	
