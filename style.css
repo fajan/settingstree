@@ -7,8 +7,8 @@ ul.settingstree_explorer{
 }
 .settingstree_explorer_root{
   font-size: 90%;
-  width: 25%;
-  margin: 1em;
+  width: 100%;
+  margin: 1em 0;
   min-height: 300px;
   max-height: 800px;
   float: left;
@@ -46,6 +46,23 @@ ul.settingstree_explorer{
 .settingstree_explorer_selected{
 	font-weight: bold;
 } 
+/* settingstree and the hierarchy history goes to left column (25%) */
+.settingstree_left{
+	float: left;
+	width: 25%;
+	margin: 0;
+	box-sizing: border-box;
+}
+.settingstree_left_column{
+	clear: left;
+}
+/* explorertree takes 25%, this takes the rest */
+.settingstree_right{
+	float: right;
+	width: 75%;
+	margin: 0;
+	box-sizing: border-box;
+}
 
 #settingstree_area #config__manager table tr td .input_area input,
 #settingstree_area #config__manager table tr td .input_area textarea,
@@ -84,7 +101,7 @@ ul.settingstree_explorer{
 }
 
 #settingstree_area .settingstree_buttons{
-	padding: 10p;
+	padding: 10px;
 	text-align: right;
 }
 #settingstree_area .settingstree_buttons button{
@@ -99,30 +116,14 @@ ul.settingstree_explorer{
 #settingstree_area .settingstree_buttons #settingstree_cancel_button{
 	background: lightgrey;
 }
-#settingstree_area .settingstree_error_area >.error,
-#settingstree_area .settingstree_error_area >.success,
-#settingstree_area .settingstree_error_area >.info,
-#settingstree_area .settingstree_error_area >.notify{
-	padding-top: 1.5em;
-	margin-right: 1em;
-	
+#settingstree_area .settingstree_error_area{
+	margin: 0 1em;
 }
 #settingstree_area .settingstree_error_area >.error *{
 	clear: none;
 }
-#settingstree_area  ul.settings_hierarchy_history{
-	font-size: 90%;
-	margin-bottom: 0;
-	list-style-type:circle;
-}
-#settingstree_area  ul.settings_hierarchy_history li > span{
-	color: #333;
-	display: block;
-}
-#settingstree_area  ul.settings_hierarchy_history li{
-	color: black;
-}
-#settingstree_area  ul.settings_hierarchy_history li > span > code,
+
+ul.settings_hierarchy_history li > span > code,
 #settingstree_area  .error code{
 	padding: 1px 4px 1px;
 }
@@ -137,6 +138,79 @@ ul.settingstree_explorer{
   padding: 1px;
   z-index: 1;
 }
+
+.settingstree_left_column ul.settings_hierarchy_history li.highlighted_level > b{
+	background: lightyellow;
+}
+.settingstree_left_column ul.settings_hierarchy_history > li.title{
+	color: #000;
+}
+.settingstree_left_column ul.settings_hierarchy_history > li.title >b{
+	display: inline;
+	font-weight: bold;
+}
+
+.settingstree_left_column ul.settings_hierarchy_history li > b{
+	display: block;
+	color: #555;
+	x-font-weight: normal;
+	padding: 0 2px;
+	margin-left: -2px;
+}
+
+.settingstree_left_column ul.settings_hierarchy_history li > b.value{
+	color: #000;
+}
+.settingstree_left_column ul.settings_hierarchy_history li > b.protect{
+	color: #000;
+}
+/*.settingstree_left_column ul.settings_hierarchy_history li > b.value:before{
+	content: '+v ';
+	color: blue;
+}
+.settingstree_left_column ul.settings_hierarchy_history li > b.protect:before{
+	content: '+p ';
+	color: red;
+}
+.settingstree_left_column ul.settings_hierarchy_history li > b.protect.value:before{
+	content: '+vp ';
+	color: red;
+}*/
+
+.settingstree_left_column ul.settings_hierarchy_history{
+	font-size: 90%;
+	padding: 0.3em;
+	border: 1px solid #ccc;
+	list-style-type:none;
+	
+}
+.settingstree_left_column ul.settings_hierarchy_history li > span{
+	color: #333;
+	display: block;
+}
+.settingstree_left_column ul.settings_hierarchy_history li > span._d{
+	color: #3a3;
+}
+.settingstree_left_column ul.settings_hierarchy_history li > span._v{
+	color: #33a;
+}
+.settingstree_left_column ul.settings_hierarchy_history li > span._v > i._i{
+	color: #a33;
+	font-style: normal;
+	font-size: 90%;
+}
+.settingstree_left_column ul.settings_hierarchy_history li > span._p{
+	color: #a33;
+}
+
+.settingstree_left_column ul.settings_hierarchy_history li{
+	margin-left: 0.8em;
+}
+.settingstree_left_column ul.settings_hierarchy_history li ul{
+	list-style-type:none;
+}
+
+
 
 .tpl_dokuwiki  #dokuwiki__pagetools {
  z-index: 3; /* this is needed, because we use absolute positioned buttons, and it looks crappy with default template... other templates should include this for their static positioned parts anyway... */

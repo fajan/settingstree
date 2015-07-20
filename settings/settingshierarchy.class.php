@@ -31,7 +31,29 @@ class settingshierarchy{
 		global $conf;
 		if (!($ret = @$lang[$conf['lang']][$key])){
 			if (!($ret = @$lang['en'][$key])){
-				$ret = $key;
+				// we need to check, if it's '{key}_o_{option}' from a plugin setting, and return null if it is, but translation does not exists, to display only the 'option' part of it.
+				if (!preg_match('~^('.implode('|',array_keys($this->_meta)).')_o_~',$key)){
+					$ret = '{msgid:'.$key.'}'; // else we need to return the something if we want to display, that the key is missing instead of simply ignore a message...
+					// Note: if lang keys needs to be html escaped then there is a conceptual problem about msgids...
+				/** 	imagine a situation: 
+				 *	function resultMessage($error){
+				 *		$message = '';
+				 *		if ($error)
+				 *			$message .= getLang('corruption_warning');			// key missing, should be 'Corruption WARNING!';
+				 *		$message .= ' '.sprintf(
+				 *			getLang('your_data_is_%s_saved'),					// key=>value: 'Your data is %s saved!'
+				 *			($error ? getLang('not') : ''),						// key missing, should be 'not'
+				 *			);
+				 *		if ($error)
+				 *			$message .= ' '.getLang('backup_your_data');		// key missing, should be 'Make sure you backup your data manually!'
+				 *		return trim($message);
+				 *	}
+				 *		on error:
+				 *		The user should see if keys where there:			 'Corruption WARNING! Your data is not saved! Make sure you backup your data manually!';
+				 *		User should at least see:							 '{msgid:corruption_warning} Your data is {msgid:not} saved! {msgid:backup_your_data}';
+				 *		By ignoring missing messages, the user will see: 	 'Your data is  saved!'; 
+				 */
+				}
 			}
 		}
 		return $ret;
@@ -138,22 +160,59 @@ class settingshierarchy{
 		global $conf;
 		return !array_key_exists($key,(array)@$conf['plugin'][$pluginname]);
 	}
-/*	
-	private static $conf_exists = null;		// keys existing for all plugins (prot, loc or default)
-	static function _isextended($key,$pluginname){
-		if (!static::$conf_exists){
-			global $conf;	// conf contains all plugin settings that are used by the config plugin.
-			static::$cong_exists = array();
-			array_walk($conf['plugin'],function($arr,$pl){
-				static::$conf_exists[$pl] = array();
-				array_walk($arr, function($val,$key) use($pl){
-					static::$conf_exists[$pl][$key] = true;
-				});
-			});
+
+	function showHierarchyLevelRecursive($level,$key,&$empty){
+		$ch_empty = true;
+		$chn = $level->getChildren();
+		if (!empty($chn)){
+			$chhtml = '<ul>';
+			foreach ($chn as $ch){
+				$_chhtml = $this->showHierarchyLevelRecursive($ch,$key,$_empty);
+				if (!$_empty) $chhtml .= $_chhtml;
+				$ch_empty = $ch_empty && $_empty;
+			}
+			$chhtml .= '</ul>';
 		}
-		return !@static::$conf_exists[$pluginname][$key];	// returns boolean: true if key does not exist.
-	}*/
-	
+		$p = $level->isLevelProtected($key);
+		$v = $level->isLevelValue($key);
+		$empty = !$p && !$v && $ch_empty;
+		$lev = "<li data-path='{$level->getPath()}' class='".($empty ? 'empty':'')."'>";
+		$lev .= "<b class='".($p ? 'protect':'').' '.($v ? 'value':'')."'>"
+//			.settingshierarchy::$helper->getLang('on_level').": "
+			."{$level->getLevelNameRelative()}</b>";//.settingshierarchy::$helper->getLang('on_level')." '<b>{$level->getPath()}</b>':";
+		$lev .= ($p ? "<span class='_p'>".settingshierarchy::$helper->getLang('became_protected').".</span>" : "");
+		$lev .= ($v ? "<span class='_v'>".settingshierarchy::$helper->getLang('value_set_to')." <code>{$this->format($key,$level->getLevelValue($key))}</code>".($level->isLevelValueIgnored($key) ? " <i class='_i'>".settingshierarchy::$helper->getLang('but_ignored')."</i>" : "").".</span>" : "");
+		return $lev . ($ch_empty ? "" : $chhtml) ."</li>";
+	}
+	function showHierarchy($key){
+		$ret .= '<ul class="settings_hierarchy_history">';
+		$ret .= "<li class='title'>".sprintf(settingshierarchy::$helper->getLang("settings_for_%s"),$key).'</li>';
+		if (!$this->isExtended($key)){
+			$v = $this->getLocal($key) !== null;
+			$p = $this->getProtected($key) !== null;
+			$ret .= "<li><b class='".($p ? 'protect':'').' '.($v ? 'value':'')."'>".settingshierarchy::$helper->getLang("in_config").":</b>";
+			$ret .=	"<span class='_d'>".settingshierarchy::$helper->getLang('default_is')." <code>{$this->format($key,$this->getDefault($key))}</code>.</span>";
+			$ret .= ($p ? "<span class='_p'>".settingshierarchy::$helper->getLang('became_protected').".</span>" : "");
+			$ret .= ($v ? "<span class='_v'>".settingshierarchy::$helper->getLang('local_is')." <code>{$this->format($key,$this->getLocal($key))}</code>.</span>" : "");
+		}
+		else{
+			$ret .= "<li><b>".settingshierarchy::$helper->getLang("this_is_extended")."</b>";
+			$ret .=	"<span class='_d'>".settingshierarchy::$helper->getLang('default_is')." <code>{$this->format($key,$this->getDefault($key))}</code>.</span>";
+		}
+		if (!$this->_root) $this->_loadTree();
+		$roothtml = "<ul>".$this->showHierarchyLevelRecursive($this->_root,$key,$empty)."</ul>";
+		return $ret. ($empty ? "" : $roothtml)."</li></ul>";
+	}
+	function format($key,$value){
+		if ($value === null) return "[".settingshierarchy::$helper->getLang('default_value')."]";
+		if ($this->_meta[$key][0] == 'onoff'){
+			return settingshierarchy::$helper->getLang($value ? "on" : "off");
+		}
+		if ($value === ''){
+			return "[".settingshierarchy::$helper->getLang('empty_string')."]";
+		}
+		return $value;
+	}
 	
 }
 } // class_exists

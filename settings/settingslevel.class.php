@@ -19,12 +19,24 @@ class settingslevel{
 		$this->path = ':'.ltrim($path,':');
 	}
 
+	function getLevelNameRelative(){
+		if ($this->path == ':'){
+			global $lang;
+			return '['.$lang['mediaroot'].']';
+		}
+		if (!$this->_parent){
+			return $this->path;
+		}
+		$val = substr($this->path,strlen($this->_parent->path));
+		if ($val[0] == ':') $val = substr($val,1);
+		return $val;
+	}
 	function getHierarchy(){
 		return $this->_hierarchy;
 	}
 	function getCurrent($key){
 		/*	1, if there is protected value then that (here)
-			2, if there is value for level, then that (in getCurrentNoProt)
+			2, if there is value for level then that (in getCurrentNoProt)
 			3, parent's current value (in getCurrentNoProt) */
 		if (($v = $this->getProtected($key)) !== null) {return $v;}
 		return $this->getCurrentNoProt($key);
@@ -33,28 +45,28 @@ class settingslevel{
 	private function getCurrentNoProt($key){
 		// getCurrentNoProt: getProtected() may return getCurrent() value, but getCurrent() value checks getProtected()... we need a getCurrent() without calling getProtected()
 		/*	1, if there is protected value then that (in getCurrent)
-			2, if there is value for level, then that (here)
+			2, if there is value for level then that (here)
 			3, parent's current value (here) */ 
 		if (($v = @$this->_values[$key]['value']) !== null){ return $v;	}
 		if ($this->_parent) { return $this->_parent->getCurrent($key);	}
 		/*		root's current:
 			1, if there is protected, then that (done)
-			2, if root has value than that (done)
-			3, if config's local than that
-			3, config's default
+			2, if root has value then that (done)
+			3, if config's local then that
+			4, config's default
 		*/
 		if (($v = $this->_hierarchy->getLocal($key)) !== null) {return $v;}
 		return $this->_hierarchy->getDefault($key);
 	}
 
 	function getDefault($key){
-		/*	1, if there is a protected value, than that
+		/*	1, if there is a protected value then that
 			2, parents's current value */
 		if (($v = $this->getProtected($key)) !== null) {return $v;}
 		if ($this->_parent){		return $this->_parent->getCurrent($key);	}
 		/* root's default: 
 			1, if config's protected then that (done)
-			2, if config's local, than that
+			2, if config's local then that
 			3, config's default */
 		if (($v = $this->_hierarchy->getLocal($key)) !== null) {return $v;}
 		return $this->_hierarchy->getDefault($key);
@@ -62,8 +74,8 @@ class settingslevel{
 
 	
 	function getLocal($key){
-		/*	1, if there is a protected value, then null
-			2, if the level has value, than that
+		/*	1, if there is a protected value then null
+			2, if the level has value then that
 			3, null */
 		if (($v = $this->getProtected($key)) !== null) {return null;}
 		if (($v = @$this->_values[$key]['value']) !== null){ return $v;	}
@@ -71,8 +83,8 @@ class settingslevel{
 	}
 	
 	function getProtected($key){
-		/*	1, if there is a protected value from parent, than that
-			2, if there is a protection on this level, then the current value
+		/*	1, if there is a protected value from parent then that
+			2, if there is a protection on this level then the current value
 			3, null */
 		if (($v = $this->getParentProtected($key)) !== null)  {return $v;}
 		if (@$this->_values[$key]['protect']){ return $this->getCurrentNoProt($key); }
@@ -222,5 +234,8 @@ class settingslevel{
 		$c->addLevel($path,$values);
 	}
 
+	function getChildren(){
+		return $this->_children;
+	}
 }
 } // class_exists

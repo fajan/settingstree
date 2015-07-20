@@ -21,17 +21,9 @@ class settingswrapper{
 		$this->_meta = $meta;
 		$this->_initSetting($meta);
 	}
-	
-	
-	/** Tells if the level has setting (anything that needs to be saved).
-	 *  returns boolean.
-	 *
-	function has_setting(){
-		return $this->_override || $this->_protect;
-	}*/
-	
+
 	function setProtect($val){
-		if ($val === null)
+		if (!$val)
 			unset($this->_protect);
 		else
 			$this->_protect = (bool)$val;
@@ -89,7 +81,7 @@ class settingswrapper{
 		_protected = ".var_export($this->_setting->_protected ,1).",
 		_updated: '{$this->_updated}',
 		_old_val: ".var_export($this->_old_val ,1)."</small></code><br/>";*/
-		$ret .= "<button class='settingstree_button_show_hierarchy' onclick=\"jQuery('#hierarchy_area_{$this->_key}').slideToggle('fast');\">".settingshierarchy::$helper->getLang('show_hierarchy')."</button>";
+		$ret .= "<button class='settingstree_button_show_hierarchy' onclick=\"settingstree_show_in_hierarchy('{$this->_key}','{$this->_level->path}');\">".settingshierarchy::$helper->getLang('show_hierarchy')."</button>";
 		$ret .= "</td></tr>";
 		$ret .= "<tr {$cssclass}><td class='protect_area' data-currentval='".($this->_protect ? '1' : '0')."'>
 				<label for='settingstree_{$this->_key}_protect'>".settingshierarchy::$helper->getLang('protected')."</label>
@@ -103,56 +95,17 @@ class settingswrapper{
 //			if ($this->_current_value === $this->_level->getDefault()){	}
 		}
 		$ret .= "{$input}</td></tr>";
-		$h = $this->showHierarchy($open);
-		$ret .=	"<tr {$cssclass}><td colspan='2' class='hierarchy_area' id='hierarchy_area_{$this->_key}' ".($open ? "" : "style='display: none;'").">{$h}</td></tr>";
+//		$h = $this->showHierarchy($open);
+//		$ret .=	"<tr {$cssclass}><td colspan='2' class='hierarchy_area' id='hierarchy_area_{$this->_key}' ".($open ? "" : "style='display: none;'").">{$h}</td></tr>";
 //		$ret .= ""
 		return $ret;
 	}
 	
 	function format($value){
-		if ($value === null) return "[".settingshierarchy::$helper->getLang('default_value')."]";
-		if ($this->_meta[0] == 'onoff'){
-			return settingshierarchy::$helper->getLang($value ? "on" : "off");
-		}
-		if ($value === ''){
-			return "[".settingshierarchy::$helper->getLang('empty_string')."]";
-		}
-		return $value;
+		// moved to hierarchy. $this->_meta should be now removed...
+		return $this->_level->getHierarchy()->format($this->_key,$value);
 	}
 	
-	function showHierarchy(&$open){
-		$level = $this->_level;
-		$root = $level->getHierarchy();
-		$ret = array();
-		do{
-			$p = $level->isLevelProtected($this->_key);
-			$v = $level->isLevelValue($this->_key);
-			if ($p || $v){
-				$lev = "<li>".($level !== $this->_level ? settingshierarchy::$helper->getLang('on_level')." '<b>{$level->getPath()}</b>':":settingshierarchy::$helper->getLang('on_this_level'));
-				$lev .= ($p ? "<span>".settingshierarchy::$helper->getLang('became_protected').".</span>" : "");
-				$lev .= ($v ? "<span>".settingshierarchy::$helper->getLang('value_set_to')." <code>{$this->format($level->getLevelValue($this->_key))}</code>".($level->isLevelValueIgnored($this->_key) ? ' '.settingshierarchy::$helper->getLang('but_ignored') : "").".</span>" : "");
-				$lev .= "</li>";
-				array_unshift($ret,$lev);
-			}
-			$level = $level->getParent();
-		}while ($level);
-		if (!$root->isExtended($this->_key)){
-			$lev = "<li>".settingshierarchy::$helper->getLang("in_config").":";
-			$lev .=	"<span>".settingshierarchy::$helper->getLang('default_is')." <code>{$this->format($root->getDefault($this->_key))}</code>.</span>";
-			$lev .= (($v =  $root->getLocal($this->_key))!==null ? "<span>".settingshierarchy::$helper->getLang('local_is')." <code>{$this->format($v)}</code>.</span>" : "");
-			$lev .= ($root->getProtected($this->_key)!==null ? "<span>".settingshierarchy::$helper->getLang('became_protected').".</span>" : "");
-			$lev .= "</li>";
-		}
-		else{
-			$lev = "<li>".settingshierarchy::$helper->getLang("this_is_extended");
-			$lev .=	"<span>".settingshierarchy::$helper->getLang('default_is')." <code>{$this->format($root->getDefault($this->_key))}</code>.</span>";
-			$lev .= "</li>";
-		}
-		array_unshift($ret,$lev);
-		
-		$open = (count($ret) > 1);
-		return "<ul class='settings_hierarchy_history'>".implode("\n",$ret)."</ul>";
-	}
 	
 }
 } // class_exists

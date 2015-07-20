@@ -146,11 +146,14 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 	function showAdmin($pluginname,$folder){
 		$set = $this->_loadSettings($pluginname);
 		$e = $this->init_explorertree();
-		$ret = $e->htmlExplorer('settingstree',':');
-		$ret .= "<form id='settingstree_area' method='GET' onsubmit='return false;'>";
+		$ret = "";
+		$ret .= "<div class='settingstree_left'>";
+		$ret .= $e->htmlExplorer('settingstree',':');
+		$ret .= "<div class='settingstree_left_column'></div></div>";
+		$ret .= "<div class='settingstree_right'><form id='settingstree_area' method='GET' onsubmit='return false;'>";
 		$level = $set->getLevel($folder);
 		$ret .= $level->showHtml();
-		$ret .="</form>";
+		$ret .="</form></div>";
 		$ret .= "<script type='text/javascript'>	jQuery('#settingstree_area').settingsTree({$this->_treeOpts($pluginname)});</script>";
 		return $ret;
 	}
@@ -176,6 +179,10 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 		return $level->showHtml();
 	}
 	
+	function showHierarchy($pluginname,$key){
+		$set = $this->_loadSettings($pluginname);
+		return $set->showHierarchy($key);
+	}
 	
 	private function _treeOpts($pluginname){
 		return json_encode(array(
@@ -185,6 +192,7 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 		));
 	}
 
+	
 	
 /*	function registerRoute($name,array $options){
 		$this->routes[$name] = array_replace_recursive ($this->options,$options);

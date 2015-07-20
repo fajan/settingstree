@@ -41,6 +41,14 @@ class action_plugin_settingstree extends DokuWiki_Action_Plugin {
 				$data = array('html' => $helper->showHtml($INPUT->str('pluginname'),':'.ltrim($INPUT->str('path'),':')),'path'=> ':'.ltrim($INPUT->str('path'),':'));
 				if (!$data['html']) {$data['error'] = true; $data['msg'] = "Can't load level html.";}
 				break;
+			case 'show_hierarchy':
+				if (!($helper = plugin_load('helper', 'settingstree'))){
+					$data = array('error'=>true,'msg'=>"Can't load tree helper.");
+					break;
+				}
+				$data = array('html' => $helper->showHierarchy($INPUT->str('pluginname'),$INPUT->str('key')));
+				if (!$data['html']) {$data['error'] = true; $data['msg'] = "Can't load level html.";}
+				break;
 			case 'savelevel':
 				if (!($helper = plugin_load('helper', 'settingstree'))){
 					$data = array('error'=>true,'msg'=>"Can't load tree helper.");
