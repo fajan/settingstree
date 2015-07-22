@@ -82,6 +82,73 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 	
     function getMethods() {
         $result = array();
+		$result[] = array(
+                'name'   => 'checkSettingsVersion',
+                'desc'   => 'Checks if a plugin settings require (re)registering settings, by comparing the version in parameter to the currently stored version.',
+				'parameters' => array(
+					'pluginname' => "string plugin's name that needs to be checked e.g. 'dw2pdf'.",
+					'version' => "integer the version of meta/defaults for settings, that is needed (usually timestamp)",
+					),
+				'return' => 'boolean (stored_version < parameter_version).'
+                );
+		$result[] = array(
+                'name'   => 'registerSettings',
+                'desc'   => 'Register config settings for a plugin.',
+				'parameters' => array(
+					'pluginname' => "string plugin's name that needs to be stored e.g. 'dw2pdf'.",
+					'version' => "integer the version of meta/defaults for settings that is going to be registered (usually timestamp)",
+					'meta' => "array the settings' metas. Same structure as in 'conf/metadata.php', i.e. array('settingsname' => array('onoff'),'settingname2'=>array('string','_pattern'=>'/^[1-5]x[1-5]$/'))",
+					'defaults' => "array the default values. i.e. array('settingsname'=>1,'settingsname2'=>'1x3')",
+					),
+                );
+		$result[] = array(
+                'name'   => 'showAdmin',
+                'desc'   => 'Returns embeddable html that can be used on an admin page (or any page) ->explorertree + cofiguration area + placeholder for hierarchy area.',
+				'parameters' => array(
+					'pluginname' => "string plugin's name which's settings are displayed e.g. 'dw2pdf'.",
+					'folder' => "string the folder opened by default. You should use ':' (colon) to separate namespaces.",
+					),
+				'return' => 'string html (echo-able or sendable via ajax)',
+                );
+		$result[] = array(
+                'name'   => 'showHtml',
+                'desc'   => 'Returns embeddable html of the configuration area only.',
+				'parameters' => array(
+					'pluginname' => "string plugin's name which's settings are displayed e.g. 'dw2pdf'.",
+					'folder' => "string the folder opened by default. You should use ':' (colon) to separate namespaces.",
+					),
+				'return' => 'string html (echo-able or sendable via ajax)',
+                );
+		$result[] = array(
+                'name'   => 'showHierarchy',
+                'desc'   => 'Returns embeddable html of the hierarchy area only.',
+				'parameters' => array(
+					'pluginname' => "string plugin's name which's settings are displayed e.g. 'dw2pdf'.",
+					'key' => "string the name of the setting e.g. 'pagesize'.",
+					),
+				'return' => 'string html (echo-able or sendable via ajax)',
+                );
+		$result[] = array(
+                'name'   => 'saveLevel',
+                'desc'   => 'Saves/validates changes and returns the updated embeddable html of the configuration area only.',
+				'parameters' => array(
+					'pluginname' => "string plugin's name which's settings are displayed e.g. 'dw2pdf'.",
+					'folder' => "string the folder (level) which's  values are going to be saved. You should use ':' (colon) to separate namespaces.",
+					'data' => "array the data to be saved. required structure: array('settingsname'=>array('protect'=>1/0, 'config'=>'newvalue')). Requires only the parameters that are changed!",
+					'results' => "OUT array the results of save: array('success' => true/false, 'error' => 'true/false', 'msg' => 'Changes are saved/Changes are not saved (by lang)')",
+					),
+				'return' => 'string html (echo-able or sendable via ajax)',
+                );
+		$result[] = array(
+                'name'   => 'getConf',
+                'desc'   => 'Gets the effective values for the current namespace/page. Only values that are changeable by settingstree are returned (i.e. no ignored settings).',
+				'parameters' => array(
+					'pluginname' => "string plugin's name which's settings are displayed e.g. 'dw2pdf'.",
+					'folder' => "string the folder (level) which's  values are returned. You should use ':' (colon) to separate namespaces.",
+					),
+				'return' => "array effective values for each key e.g. array('settingsname'=>1, 'settingsname2'=>'1x3')",
+                );
+		
         return $result;
     }
 
@@ -142,6 +209,12 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 		}
 		return $ret;
 	}
+	function getConf($pluginname,$folder){
+		$set = $this->_loadSettings($pluginname);
+		$level = $set->getLevel($folder);
+		return $level->getAllValues();
+	}
+	
 	
 	function showAdmin($pluginname,$folder){
 		$set = $this->_loadSettings($pluginname);

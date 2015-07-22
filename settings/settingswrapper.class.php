@@ -69,6 +69,7 @@ class settingswrapper{
 	
 	function showHtml(){
 		$lang = $this->_level->getHierarchy();
+
 		list($label,$input) = $this->_setting->html($lang);	// html only uses the $plugin as parameter to have a getLang method, we emulate that on hierarchy.
 		$cssclass = $this->_setting->is_default() ? ' class="default"' : ($this->_setting->is_protected() ? ' class="protected"' : '');
 //		$has_error = $this->_setting->error() ? ' class="value error"' : ' class="value"';

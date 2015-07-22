@@ -81,7 +81,7 @@ jQuery.fn.settingsTree = function(opts){
 		},
 		open_hierarchy_level = function(open_level){
 			var $hier = $('.settingstree_left_column');
-			$hier.find('.highlighed_level').removeClass('highlighted_level');
+			$hier.find('.highlighted_level').removeClass('highlighted_level');
 			$hier.find('[data-path="'+open_level+'"]').addClass('highlighted_level');
 		};
 	
@@ -99,7 +99,13 @@ jQuery.fn.settingsTree = function(opts){
 				if (r.token) token = r.token;
 				if (r.error) alert(r.msg);
 				if (r.path){ path = r.path;	}
-				if (r.html){ $root.html(r.html); } 
+				if (r.html){ 
+					$root.html(r.html); 
+					var key = $('.settingstree_left_column').data('current');
+					if (key){
+						settingstree_show_in_hierarchy(key,path);
+					}
+				} 
 				else alert('Error: html not loaded!');
 			}
 		);	

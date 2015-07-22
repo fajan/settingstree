@@ -118,6 +118,7 @@ class settingslevel{
 	function getValues(){
 		return $this->_values;
 	}
+
 	function getValuesRecursive(){
 		$ret = array();
 		$v = $this->getValues();
@@ -129,6 +130,14 @@ class settingslevel{
 		}
 		return $ret;
 	}
+	function getAllValues(){
+		$ret = array();
+		foreach ($this->_hierarchy->getFieldConfig() as $key=>$meta){
+			$ret[$key] = $this->getCurrent($key);
+		}
+		return $ret;
+	}
+
 	
 	function getParent(){
 		return $this->_parent;
@@ -176,6 +185,7 @@ class settingslevel{
 	
 	
 	function showHtml(){
+
 //		$ret .= "<input type='hidden' name='settingstree_path' value='{$this->path}' /><input type='hidden' name='settingstree_pluginname' value='{$this->_hierarchy->getPluginName()}' />";
 		$ret .= "<div class='settingstree_error_area'></div>";
 		$ret .= "<div id='config__manager' data-path='{$this->path}'><fieldset><legend>".(sprintf(settingshierarchy::$helper->getLang('settings_for_%s'),$this->path))."</legend><div class='table'><table class='inline'><tbody>";
