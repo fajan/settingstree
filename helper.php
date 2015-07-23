@@ -12,17 +12,18 @@ require_once('settings/settingshierarchy.class.php');
 
 class helper_plugin_settingstree extends DokuWiki_Plugin {
 
-	private $memcache = false;			// memcache
-	private $explorer_helper = null;
-	private $explorer_registered = false;
-
-
-
-	private $_settingsHierarchy = array();	// settings hierarchy for a plugin
+	private $memcache = false;			// memcache false: not initialized, null: not present/usable, object: the helper plugin.
+	private $explorer_helper = null;	// mandatory dependency, error if dependency is broken.
+	private $explorer_registered = false;	// flag to indicate that the callbacks/options are registered to explorertree or not.
+	private $_settingsHierarchy = array();	// settings hierarchy for a plugin array(pluginname => hierarchy)
 	
 	function get_explorer(){
 		if (!$this->explorer_helper){
 			$this->explorer_helper = plugin_load('helper','explorertree');
+			if (!$this->explorer_helper){
+				// what is the dokuwiki way to die with fatal plugin errors?
+				trigger_error('Explorertree is a dependency but not available!',E_USER_ERROR);
+			}
 		}
 		return $this->explorer_helper;
 	}
@@ -37,12 +38,9 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 				),
 				'vars' => array(
 					'class' => 'settingstree_explorer',
-//					'id' => 'mytreeid',
 				),
 				'callbacks' => array(
-//					'page_selected_cb' => array($this,'pageselected'),
 					'page_selected_js' => 'settingstree_selectlevel',
-//					'ns_selected_cb' => array($this,'nsselected'),
 					'ns_selected_js' => 'settingstree_selectlevel',
 				),
 			));
@@ -54,6 +52,10 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 	function cache(){
 		if ($this->memcache === false){
 			$this->memcache = plugin_load('helper','memcache');
+			// we don't want to use cache if it does not give performance upgrade
+			if ($this->memcache->emulated()){
+				$this->memcache = null;
+			}
 			settingshierarchy::$cache = $this->memcahce;
 		}
 		return $this->memcahce;
@@ -168,7 +170,7 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 			trigger_error("Can not store settings for {$pluginname} to {$file}!",E_USER_ERROR);
 		}
 		if ($c = $this->cache()){
-			$TTL = 0;
+			$TTL = 0;	// DECIDE: push this to config?
 			$c->set("plugin_settringstree_settingsversion_{$pluginname}",$version,$TTL);
 			$c->set("plugin_settringstree_settingsmeta_{$pluginname}",$meta,$TTL);
 			$c->set("plugin_settringstree_settingsdefaults_{$pluginname}",$defaults,$TTL);
@@ -203,7 +205,7 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 		$values = $set->getValueTree();
 		if ($ret = file_put_contents(DOKU_SETTINGS_DIR."/{$pluginname}.json",json_encode($values)) !== false){
 			if ($c){	// we don't update cache, if we can't save the values to the filesystem. It would be bad to have correct data until cache is flushed then suddenly something corrupt...
-				$TTL = 0;
+				$TTL = 0; // TODO: push this to config?
 				$c->set("plugin_settringstree_settingsvalues_{$pluginname}",$values,$TTL);
 			}
 		}
@@ -233,7 +235,6 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 	function saveLevel($pluginname,$folder,$data,&$results){
 		$set = $this->_loadSettings($pluginname);
 		$level = $set->getLevel($folder);
-//		header('content-type','text/html');
 		if ($level->checkValues($data) && $this->_storeValues($pluginname,$set)){ // the values are okay, and it managed to save to file/cache
 			$results['error'] = false;
 			$results['msg'] = $this->getLang('changes_saved');
@@ -248,7 +249,6 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 	function showHtml($pluginname,$folder){
 		$set = $this->_loadSettings($pluginname);
 		$level = $set->getLevel($folder);
-//		header('content-type','text/html');
 		return $level->showHtml();
 	}
 	
@@ -265,26 +265,6 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 		));
 	}
 
-	
-	
-/*	function registerRoute($name,array $options){
-		$this->routes[$name] = array_replace_recursive ($this->options,$options);
-	}
-	function getOptions($name = null){
-		if (!$name) return $this->options;
-		return @$this->routes[$name][$options];
-	}
-
-	function loadRoute($name,array $reg = null){
-		if (!$name) return $this->options;
-		if ((! @$this->routes[$name]) && $reg){
-			if (($p = plugin_load($reg['type'],$reg['plugin'])) && $met = $reg['method']){
-				call_user_func(array($p,$met),array());
-			}
-		}
-		return @$this->routes[$name];
-	}
-*/
 	
 }
 // vim:ts=4:sw=4:et: 

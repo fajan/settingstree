@@ -9,16 +9,14 @@ class settingswrapper{
 	private $_level = null;					// the settingslevel object
 	public $_value = null;					// the value defined in this level
 	public $_protect = false;				// the protection added by this level
-	private $_old_val = null;			// we store the old value here if the value is updated.
-	private $_updated = false;
-	private $_meta = null;
+	private $_old_val = null;				// we store the old value here if the value is updated.
+	private $_updated = false;				// flag to indicate if value was updated.
 	
 	function __construct($key,settingslevel $level, array $meta, $set){
 		$this->_key = $key;
 		$this->_level = $level;
 		$this->_protect = @$set['protect'];
 		$this->_value = @$set['value'];
-		$this->_meta = $meta;
 		$this->_initSetting($meta);
 	}
 
@@ -72,12 +70,12 @@ class settingswrapper{
 
 		list($label,$input) = $this->_setting->html($lang);	// html only uses the $plugin as parameter to have a getLang method, we emulate that on hierarchy.
 		$cssclass = $this->_setting->is_default() ? ' class="default"' : ($this->_setting->is_protected() ? ' class="protected"' : '');
-//		$has_error = $this->_setting->error() ? ' class="value error"' : ' class="value"';
 		$errorclass = $this->_setting->error() ? ' value error' : ' value';
 		$has_icon = $this->_setting->caution() ? '<img src="'.DOKU_PLUGIN_IMAGES.$this->_setting->caution().'.png" alt="'.$this->_setting->caution().'" title="'.$lang->getLang($this->_setting->caution()).'" />' : '';
 		$ret = "<tr {$cssclass}><td class='label' colspan='2'>";
 		$ret .=	"<span class='outkey'>{$this->_setting->_out_key(true,true)}</span>{$has_icon}{$label}";
-/*		$ret .= "<code><small>debug: _local = ".var_export($this->_setting->_local ,1).",
+		// DECIDE: push to plugin debug?
+		/*		$ret .= "<code><small>debug: _local = ".var_export($this->_setting->_local ,1).",
 		_default = ".var_export($this->_setting->_default ,1).",
 		_protected = ".var_export($this->_setting->_protected ,1).",
 		_updated: '{$this->_updated}',
@@ -93,17 +91,12 @@ class settingswrapper{
 			$ret .= "<div class='error'>".settingshierarchy::$helper->getLang('invalid_value').($this->_setting->_input !== null ? ": <code>{$this->format($this->_setting->_input)}</code>": "!")." </div>";
 		}elseif ($this->_updated){
 			$ret .= "<div class='info'>".settingshierarchy::$helper->getLang('updated_value_from').": <code>{$this->format($this->_old_val)}</code> </div>";
-//			if ($this->_current_value === $this->_level->getDefault()){	}
 		}
 		$ret .= "{$input}</td></tr>";
-//		$h = $this->showHierarchy($open);
-//		$ret .=	"<tr {$cssclass}><td colspan='2' class='hierarchy_area' id='hierarchy_area_{$this->_key}' ".($open ? "" : "style='display: none;'").">{$h}</td></tr>";
-//		$ret .= ""
 		return $ret;
 	}
 	
 	function format($value){
-		// moved to hierarchy. $this->_meta should be now removed...
 		return $this->_level->getHierarchy()->format($this->_key,$value);
 	}
 	

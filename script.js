@@ -33,7 +33,6 @@ jQuery.fn.settingsTree = function(opts){
 				{ call:'plugin_settingstree', operation: 'savelevel', pluginname: pluginname, path: path, sectok: token, data: changes },
 				function(r){
 					if (r.token) token = r.token;
-//					if (r.error) alert(r.msg);
 					if (r.html){ $root.html(r.html);	}
 					if (r.success){	
 						$('.settingstree_error_area').html(("<div class='success'>"+(r.msg||"success")+"</div>"));

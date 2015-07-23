@@ -160,7 +160,6 @@ class settingslevel{
 					$save_success = false;
 				}else{
 					$par_val = $this->getDefault($key);
-//					echo "/* {$key}: '{$par_val}' != {$set[$key]->_value} */";
 					if ($set[$key]->_value !== null && $par_val !== $set[$key]->_value){
 						$this->_values[$key]['value'] = $set[$key]->_value;	// we do need to save value, as it's not default. (default == parent's value)
 					}else{
@@ -186,6 +185,7 @@ class settingslevel{
 	
 	function showHtml(){
 
+		// DECIDE: non-ajax compatibility: plain posts and js states in hidden fields?
 //		$ret .= "<input type='hidden' name='settingstree_path' value='{$this->path}' /><input type='hidden' name='settingstree_pluginname' value='{$this->_hierarchy->getPluginName()}' />";
 		$ret .= "<div class='settingstree_error_area'></div>";
 		$ret .= "<div id='config__manager' data-path='{$this->path}'><fieldset><legend>".(sprintf(settingshierarchy::$helper->getLang('settings_for_%s'),$this->path))."</legend><div class='table'><table class='inline'><tbody>";

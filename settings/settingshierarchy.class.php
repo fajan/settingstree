@@ -64,7 +64,7 @@ class settingshierarchy{
 			global $conf;
 			$ls = array($conf['lang']);
 			if ($conf['lang'] !== 'en') $ls[] = 'en';	// English is always the fallback. 
-			//TODO: update for multi-level localization  ['de_DE-informal','de_DE','de','en_GB','en']
+			//TODO: update for multi-level localization, sew how DW handles that...  ['de_DE-informal','de_DE','de','en_GB','en']
 			
 			foreach ($ls as $l){	// for all language we need
 				$path = DOKU_INC."lib/plugins/{$this->_pluginname}/lang/{$l}/settings.php";
@@ -122,11 +122,6 @@ class settingshierarchy{
 		return $this->_root->getValuesRecursive();
 	}
 
-/*	function getCurrent($key){
-		if (($x = $this->getLocal($key)) != null) return $x;
-		return $this->_defaults[$key];
-	}*/
-
 	function getDefault($key){ 			return @$this->_defaults[$key];		}
 	function getLocal($key){ 			return self::_getlocal($key,$this->_pluginname);		}
 	function getProtected($key){		return self::_getprotected($key,$this->_pluginname);	}
@@ -178,8 +173,7 @@ class settingshierarchy{
 		$empty = !$p && !$v && $ch_empty;
 		$lev = "<li data-path='{$level->getPath()}' class='".($empty ? 'empty':'')."'>";
 		$lev .= "<b class='".($p ? 'protect':'').' '.($v ? 'value':'')."'>"
-//			.settingshierarchy::$helper->getLang('on_level').": "
-			."{$level->getLevelNameRelative()}</b>";//.settingshierarchy::$helper->getLang('on_level')." '<b>{$level->getPath()}</b>':";
+			."{$level->getLevelNameRelative()}</b>";
 		$lev .= ($p ? "<span class='_p'>".settingshierarchy::$helper->getLang('became_protected').".</span>" : "");
 		$lev .= ($v ? "<span class='_v'>".settingshierarchy::$helper->getLang('value_set_to')." <code>{$this->format($key,$level->getLevelValue($key))}</code>".($level->isLevelValueIgnored($key) ? " <i class='_i'>".settingshierarchy::$helper->getLang('but_ignored')."</i>" : "").".</span>" : "");
 		return $lev . ($ch_empty ? "" : $chhtml) ."</li>";
