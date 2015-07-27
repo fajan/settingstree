@@ -1,4 +1,4 @@
-var settingstree_selectlevel, settingstree_show_in_hierarchy; // these functions are global, so it is callable by explorerTree / button events
+//var settingstree_selectlevel, settingstree_show_in_hierarchy, settingstree_show_export; // these functions are global, so it is callable by explorerTree / button events
 jQuery.fn.settingsTree = function(opts){
 	if (jQuery(this).length !== 1){
 		throw 'There must be exactly one settingsTree instance on a page!';
@@ -83,33 +83,34 @@ jQuery.fn.settingsTree = function(opts){
 			$hier.find('.highlighted_level').removeClass('highlighted_level');
 			$hier.find('[data-path="'+open_level+'"]').addClass('highlighted_level');
 		};
-	
-	
-	
-	settingstree_selectlevel = function settingstree_selectlevel(id){
-		if (has_pending()){
-			$('.settingstree_error_area').html($("<div class='error'><h4>"+getLang('pending_change')+"</h4><p>"+getLang('pending_change_explain')+"</p></div>"));
-			return;
-		}
-		$root.html('<div class="settingstree_error_area"><div class="notify">'+getLang('loading_level')+'</div></div>');
-		$.post(DOKU_BASE + 'lib/exe/ajax.php',
-			{ call:'plugin_settingstree', operation: 'loadlevel', pluginname: pluginname, path: id, sectok: token },
-			function(r){
-				if (r.token) token = r.token;
-				if (r.error) alert(r.msg);
-				if (r.path){ path = r.path;	}
-				if (r.html){ 
-					$root.html(r.html); 
-					var key = $('.settingstree_left_column').data('current');
-					if (key){
-						settingstree_show_in_hierarchy(key,path);
+	if (typeof opts.explorertree_id === 'string'){
+		$(document).ready(function(){
+			$('#'+opts.explorertree_id).on('tree_selected',function settingstree_selectlevel(event,id){
+				if (has_pending()){
+					$('.settingstree_error_area').html($("<div class='error'><h4>"+getLang('pending_change')+"</h4><p>"+getLang('pending_change_explain')+"</p></div>"));
+					return;
+				}
+				$root.html('<div class="settingstree_error_area"><div class="notify">'+getLang('loading_level')+'</div></div>');
+				$.post(DOKU_BASE + 'lib/exe/ajax.php',
+					{ call:'plugin_settingstree', operation: 'loadlevel', pluginname: pluginname, path: id, sectok: token },
+					function(r){
+						if (r.token) token = r.token;
+						if (r.error) alert(r.msg);
+						if (r.path){ path = r.path;	}
+						if (r.html){ 
+							$root.html(r.html); 
+							var key = $('.settingstree_left_column').data('current');
+							if (key){
+								settingstree_show_in_hierarchy(key,path);
+							}
+						} 
+						else alert('Error: html not loaded!');
 					}
-				} 
-				else alert('Error: html not loaded!');
-			}
-		);	
-	};
-	settingstree_show_in_hierarchy = function(key,open_level){
+				);	
+			}); 
+		});
+	}
+	$root.on('show_in_hierarchy',function(event,key,open_level){
 		var $left_col = $('.settingstree_left_column'), current = $left_col.data('current')||null;
 		if (current !== key){
 			$left_col.html('<div class="notify">'+getLang('loading_hierarchy')+'</div>');
@@ -129,7 +130,7 @@ jQuery.fn.settingsTree = function(opts){
 		}else{
 			open_hierarchy_level(open_level);
 		}
-	}
+	});
 	init_area();
 	
 };

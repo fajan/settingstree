@@ -181,23 +181,28 @@ class settingslevel{
 		}
 		return $save_success;
 	}
-	
+
+	private function _getTitle(){
+		return sprintf(settingshierarchy::$helper->getLang('settings_for_%s'),$this->path);
+	}
+	private function _getButtons(){
+		return 
+			"<button id='settingstree_save_button' onclick=\"jQuery(this).trigger('settingstree_save')\">".settingshierarchy::$helper->getLang('save')."</button> 
+			<button id='settingstree_cancel_button'  onclick=\"jQuery(this).trigger('settingstree_cancel')\">".settingshierarchy::$helper->getLang('cancel')."</button>";
+
+	}
 	
 	function showHtml(){
-
 		// DECIDE: non-ajax compatibility: plain posts and js states in hidden fields?
 //		$ret .= "<input type='hidden' name='settingstree_path' value='{$this->path}' /><input type='hidden' name='settingstree_pluginname' value='{$this->_hierarchy->getPluginName()}' />";
 		$ret .= "<div class='settingstree_error_area'></div>";
-		$ret .= "<div id='config__manager' data-path='{$this->path}'><fieldset><legend>".(sprintf(settingshierarchy::$helper->getLang('settings_for_%s'),$this->path))."</legend><div class='table'><table class='inline'><tbody>";
+		$ret .= "<div id='config__manager' data-path='{$this->path}'><fieldset><legend>{$this->_getTitle()}</legend><div class='table'><table class='inline'><tbody>";
 		foreach ($this->_getSettings() as $key => $setting){
 			$ret .= $setting->showHtml();
 		}
 		$ret .= "</tbody></table></div></fieldset></div>";
 		$ret .= "<div class='settingstree_error_area'></div>";
-		$ret .= "<div class='settingstree_buttons'>
-			<button id='settingstree_save_button' onclick=\"jQuery(this).trigger('settingstree_save')\">".settingshierarchy::$helper->getLang('save')."</button> 
-			<button id='settingstree_cancel_button'  onclick=\"jQuery(this).trigger('settingstree_cancel')\">".settingshierarchy::$helper->getLang('cancel')."</button>
-		</div>";
+		$ret .= "<div class='settingstree_buttons'>{$this->_getButtons()}</div>";
 		return $ret;
 	}
 

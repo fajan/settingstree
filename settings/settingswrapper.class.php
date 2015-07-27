@@ -64,7 +64,24 @@ class settingswrapper{
 	function currentValue(){
 		return $this->_setting->_local === null ? $this->_setting->_default : $this->_setting->_local;
 	}
-	
+	private function _showHierarhcyButton(){
+		return "<button class='settingstree_button_show_hierarchy' onclick=\"jQuery(this).trigger('show_in_hierarchy',['{$this->_key}','{$this->_level->path}']);\">".settingshierarchy::$helper->getLang('show_hierarchy')."</button>";
+	}
+	private function _showProtectedCell(){
+		return "<td class='protect_area' data-currentval='".($this->_protect ? '1' : '0')."'>
+				<label for='settingstree_{$this->_key}_protect'>".settingshierarchy::$helper->getLang('protected')."</label>
+				<input class='protect_input' type='checkbox' name='protect[{$this->_key}]' id='settingstree_{$this->_key}_protect' value='1' "
+				.($this->_protect ? 'checked="checked"' : '')." ".($this->_level->getParentProtected($this->_key) !== null ? "disabled='disabled'":"")."/>
+			</td>";
+	}
+	private function _showInputUpdateResults(){
+		if ($this->_setting->_error){
+			return "<div class='error'>".settingshierarchy::$helper->getLang('invalid_value').($this->_setting->_input !== null ? ": <code>{$this->format($this->_setting->_input)}</code>": "!")." </div>";
+		}elseif ($this->_updated){
+			return "<div class='info'>".settingshierarchy::$helper->getLang('updated_value_from').": <code>{$this->format($this->_old_val)}</code> </div>";
+		}
+
+	}
 	function showHtml(){
 		$lang = $this->_level->getHierarchy();
 
@@ -72,6 +89,8 @@ class settingswrapper{
 		$cssclass = $this->_setting->is_default() ? ' class="default"' : ($this->_setting->is_protected() ? ' class="protected"' : '');
 		$errorclass = $this->_setting->error() ? ' value error' : ' value';
 		$has_icon = $this->_setting->caution() ? '<img src="'.DOKU_PLUGIN_IMAGES.$this->_setting->caution().'.png" alt="'.$this->_setting->caution().'" title="'.$lang->getLang($this->_setting->caution()).'" />' : '';
+
+
 		$ret = "<tr {$cssclass}><td class='label' colspan='2'>";
 		$ret .=	"<span class='outkey'>{$this->_setting->_out_key(true,true)}</span>{$has_icon}{$label}";
 		// DECIDE: push to plugin debug?
@@ -80,18 +99,11 @@ class settingswrapper{
 		_protected = ".var_export($this->_setting->_protected ,1).",
 		_updated: '{$this->_updated}',
 		_old_val: ".var_export($this->_old_val ,1)."</small></code><br/>";*/
-		$ret .= "<button class='settingstree_button_show_hierarchy' onclick=\"settingstree_show_in_hierarchy('{$this->_key}','{$this->_level->path}');\">".settingshierarchy::$helper->getLang('show_hierarchy')."</button>";
+		$ret .= $this->_showHierarhyButton();
 		$ret .= "</td></tr>";
-		$ret .= "<tr {$cssclass}><td class='protect_area' data-currentval='".($this->_protect ? '1' : '0')."'>
-				<label for='settingstree_{$this->_key}_protect'>".settingshierarchy::$helper->getLang('protected')."</label>
-				<input class='protect_input' type='checkbox' name='protect[{$this->_key}]' id='settingstree_{$this->_key}_protect' value='1' ".($this->_protect ? 'checked="checked"' : '')." ".($this->_level->getParentProtected($this->_key) !== null ? "disabled='disabled'":"")."/>
-			</td>";
+		$ret .= "<tr {$cssclass}>".$this->_showProtectedCell();
 		$ret .= "<td class='input_area  {$errorclass}' data-currentval='{$this->currentValue()}'>";
-		if ($this->_setting->_error){
-			$ret .= "<div class='error'>".settingshierarchy::$helper->getLang('invalid_value').($this->_setting->_input !== null ? ": <code>{$this->format($this->_setting->_input)}</code>": "!")." </div>";
-		}elseif ($this->_updated){
-			$ret .= "<div class='info'>".settingshierarchy::$helper->getLang('updated_value_from').": <code>{$this->format($this->_old_val)}</code> </div>";
-		}
+		$ret .= $this->_showInputUpdateResults();
 		$ret .= "{$input}</td></tr>";
 		return $ret;
 	}

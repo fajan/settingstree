@@ -37,11 +37,8 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 					'method' => 'init_explorertree',
 				),
 				'vars' => array(
+					'id' => 'settingstree_expolrertree',
 					'class' => 'settingstree_explorer',
-				),
-				'callbacks' => array(
-					'page_selected_js' => 'settingstree_selectlevel',
-					'ns_selected_js' => 'settingstree_selectlevel',
 				),
 			));
 			$this->explorer_registered = true;
@@ -225,7 +222,7 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 		$ret .= "<div class='settingstree_left'>";
 		$ret .= $e->htmlExplorer('settingstree',':');
 		$ret .= "<div class='settingstree_left_column'></div></div>";
-		$ret .= "<div class='settingstree_right'><form id='settingstree_area' method='GET' onsubmit='return false;'>";
+		$ret .= "<div class='settingstree_right'><form id='settingstree_area' class='settingstree_area' method='GET' onsubmit='return false;'>";
 		$level = $set->getLevel($folder);
 		$ret .= $level->showHtml();
 		$ret .="</form></div>";
@@ -261,6 +258,7 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 		return json_encode(array(
 			'token'=> getSecurityToken(),
 			'pluginname'=> $pluginname,
+			'explorertree_id' => 'settingstree_expolrertree',
 			
 		));
 	}
