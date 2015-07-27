@@ -114,4 +114,10 @@ class settingswrapper{
 	
 	
 }
+
+class settingswrapper_export extends settingswrapper{
+	function showHtml(){
+		return "...... ".__METHOD__." .....";
+	}
+}
 } // class_exists
