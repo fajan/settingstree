@@ -7,9 +7,9 @@ require_once('settingswrapper.class.php');
 
 class settingslevel{
 	public $path = null;				// absolute path
-	private $_parent = null;			// the parent or null if it's the root
+	protected $_parent = null;			// the parent or null if it's the root
+	protected $_hierarchy = null;			// the settingshierarchy containing this level.
 	private $_children = array();		// children levels
-	private $_hierarchy = null;			// the settingshierarchy containing this level.
 	private $_settings = null;			// the array of settingswrapper (by key) to this level has.
 	private $_values = null;			// values (array: key=>[prot,value]) for the level.
 	
@@ -143,7 +143,7 @@ class settingslevel{
 		return $this->_parent;
 	}
 	
-	private function _getSettings(){
+	protected function _getSettings(){
 		if (!$this->_settings){
 			foreach ($this->_hierarchy->getFieldConfig() as $key=>$meta){
 				$this->_settings[$key] = new settingswrapper($key,$this,$meta,$this->_values[$key]);
@@ -153,11 +153,11 @@ class settingslevel{
 	}
 	function checkValues($data){
 		$set = $this->_getSettings();
-		$save_success = true;
+		$check_success = true;
 		foreach ($data as $key=>$new){
 			if (isset($new['config'])){
 				if (!$set[$key]->tryUpdate($new['config'])){	// returns false on error
-					$save_success = false;
+					$check_success = false;
 				}else{
 					$par_val = $this->getDefault($key);
 					if ($set[$key]->_value !== null && $par_val !== $set[$key]->_value){
@@ -179,20 +179,30 @@ class settingslevel{
 			if (empty($this->_values[$key]))
 				unset($this->_values[$key]);
 		}
-		return $save_success;
+		if (!$check_success){
+			$this->_markChanged(array_keys($data));
+		}
+		return $check_success;
 	}
-
-	private function _getTitle(){
+	protected function _markChanged($keys){
+		$set = $this->_getSettings();
+		foreach ($keys as $key){
+			$set[$key]->markChanged($key);
+		}
+	}
+	
+	protected function _getTitle(){
 		return sprintf(settingshierarchy::$helper->getLang('settings_for_%s'),$this->path);
 	}
-	private function _getButtons(){
+	protected function _getButtons(){
 		return 
-			"<button id='settingstree_save_button' onclick=\"jQuery(this).trigger('settingstree_save')\">".settingshierarchy::$helper->getLang('save')."</button> 
-			<button id='settingstree_cancel_button'  onclick=\"jQuery(this).trigger('settingstree_cancel')\">".settingshierarchy::$helper->getLang('cancel')."</button>";
+			"<button id='settingstree_save_button' onclick=\"jQuery(this).trigger('settingstree_save'); return false;\">".settingshierarchy::$helper->getLang('save')."</button> 
+			<button id='settingstree_cancel_button'  onclick=\"jQuery(this).trigger('settingstree_cancel'); return false;\">".settingshierarchy::$helper->getLang('cancel')."</button>";
 
 	}
 	
 	function showHtml(){
+
 		// DECIDE: non-ajax compatibility: plain posts and js states in hidden fields?
 //		$ret .= "<input type='hidden' name='settingstree_path' value='{$this->path}' /><input type='hidden' name='settingstree_pluginname' value='{$this->_hierarchy->getPluginName()}' />";
 		$ret .= "<div class='settingstree_error_area'></div>";
@@ -204,6 +214,11 @@ class settingslevel{
 		$ret .= "<div class='settingstree_error_area'></div>";
 		$ret .= "<div class='settingstree_buttons'>{$this->_getButtons()}</div>";
 		return $ret;
+	}
+	function getExport($options){
+		$level = new settingslevel_export($this->_hierarchy,$this,$this->path);
+		$level->setOptions($options);
+		return $level;
 	}
 
 	function getPath(){
@@ -253,4 +268,41 @@ class settingslevel{
 		return $this->_children;
 	}
 }
+
+class settingslevel_export extends settingslevel{
+	private $_title = null;
+	function setOptions($options){
+		$this->_title = @$options['title'];
+	}
+
+	protected function _getTitle(){
+		return $this->_title !== null ? $this->_title : settingshierarchy::$helper->getLang('export_options');;
+	}
+	protected function _getButtons(){
+		return 
+			"<button id='settingstree_export_button' onclick=\"jQuery(this).trigger('settingstree_export'); return false;\">".settingshierarchy::$helper->getLang('export')."</button> 
+			<button id='settingstree_close_button'  onclick=\"jQuery(this).trigger('settingstree_close'); return false;\">".settingshierarchy::$helper->getLang('cancel')."</button>";
+	}
+	function getAllValues(){
+		$ret = array();
+		foreach ($this->_hierarchy->getFieldConfig() as $key=>$meta){
+			if ($meta['_ignore_for_export']) continue;
+			$ret[$key] = $this->getCurrent($key);
+		}
+		return $ret;
+	}
+	
+	
+	protected function _getSettings(){
+		if (!$this->_settings){
+			foreach ($this->_hierarchy->getFieldConfig() as $key=>$meta){
+				if ($meta['_ignore_for_export']) continue;
+				$this->_settings[$key] = new settingswrapper_export($key,$this,$meta,$this->_values[$key]);
+			}
+		}
+		return $this->_settings;
+	}
+	
+}
+
 } // class_exists

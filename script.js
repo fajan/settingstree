@@ -1,9 +1,26 @@
-//var settingstree_selectlevel, settingstree_show_in_hierarchy, settingstree_show_export; // these functions are global, so it is callable by explorerTree / button events
+function settingstree_show_export(opts){
+	if (!opts.on_complete || typeof window[opts.on_complete] !== 'function'){
+		return false;	// return failure if the callback is incomplete (popup won't be shown).
+	};
+	var $ = jQuery,
+		$grayout = $('<div id="settingstree_grayout"></div>').appendTo('body'),
+		$container = $('<div id="settingstree_export_popup_container"></div>').appendTo($grayout),
+		$dialog = $('<div class="settingstree_export_popup_layer"></div>').appendTo($container),
+		$form = $('<form class="settingstree_area" method="get"></form>').appendTo($dialog);
+	opts._export = true;
+	$form.settingsTree(opts);
+	$form.on('settingstree_export_complete',function(e,values){
+		window[opts.on_complete].call(null,values);	// call the on_complete callback.
+		$grayout.remove();
+	});
+	$form.on('settingstree_close', function(){$grayout.remove();}); // destroying the root with jQuery automatically removes all registered data from the memory.
+	return true; // return success (popup fill be shown).
+};
 jQuery.fn.settingsTree = function(opts){
 	if (jQuery(this).length !== 1){
 		throw 'There must be exactly one settingsTree instance on a page!';
 	}
-	var $ = jQuery, $root = $(this), opts = $.extend({},opts), pluginname = opts.pluginname, token = opts.token, pending = false, path = ':',
+	var $ = jQuery, $root = $(this), opts = $.extend({},opts), pluginname = opts.pluginname, token = opts.token, pending = false, path = ':',_export = opts._export||false,
 		getLang = function (msgid){
 			var str;
 			if ((str = LANG.plugins.settingstree[msgid]) === undefined){
@@ -26,8 +43,8 @@ jQuery.fn.settingsTree = function(opts){
 			});
 			return values;
 		},
-		savelevel = function(){
-			$('.settingstree_error_area').html($("<div class='notify'>"+getLang('saving_changes')+"</div>"));
+		savelevel = function(){	// save: we save all data, and if it's successful, we display the save options by their new values or display invalid data on error.
+			$root.find('.settingstree_error_area').html($("<div class='notify'>"+getLang('saving_changes')+"</div>"));
 			var changes = getchanged();
 			$.post(DOKU_BASE + 'lib/exe/ajax.php',
 				{ call:'plugin_settingstree', operation: 'savelevel', pluginname: pluginname, path: path, sectok: token, data: changes },
@@ -35,19 +52,32 @@ jQuery.fn.settingsTree = function(opts){
 					if (r.token) token = r.token;
 					if (r.html){ $root.html(r.html);	}
 					if (r.success){	
-						$('.settingstree_error_area').html(("<div class='success'>"+(r.msg||"success")+"</div>"));
+						$root.find('.settingstree_error_area').html(("<div class='success'>"+(r.msg||"success")+"</div>"));
 						// update the hierarchy, if it was changed by the save, and save was successful.
 						var key = $('.settingstree_left_column').data('current');
 						if (key && changes[key] !== undefined){
 							$('.settingstree_left_column').data('current',null);
-							settingstree_show_in_hierarchy(key,path);
+							show_in_hierarchy(key,path);
 						}
 					}
-					else{			$('.settingstree_error_area').html($("<div class='error'>"+(r.msg||"fail")+"</div>"));		}
+					else{			$root.find('.settingstree_error_area').html($("<div class='error'>"+(r.msg||"fail")+"</div>"));		}
+				}
+			);	
+		},
+		exportlevel = function(){	// export: we check all data - but not save it, and if it's successful, we are finished. on error we display invalid data an all changes.
+			$root.find('.settingstree_error_area').html($("<div class='notify'>"+getLang('preparing_export')+"</div>"));
+			var changes = getchanged();
+			$.post(DOKU_BASE + 'lib/exe/ajax.php',
+				{ call:'plugin_settingstree', operation: 'exportlevel', pluginname: pluginname, path: path, sectok: token, data: changes, options: opts.options },
+				function(r){
+					if (r.token) token = r.token;
+					if (r.html){ $root.html(r.html);	}
+					if (r.success){		$root.trigger('settingstree_export_complete',r.values);					}
+					else{			$root.find('.settingstree_error_area').html($("<div class='error'>"+(r.msg||"fail")+"</div>"));		}
 				}
 			);	
 			
-		}
+		},
 		resetlevel = function(){
 			$root.find('.input_area.changed, .protect_area.changed').each(function(){
 				var $inp = $(this).find('input, textarea, select'), val =$inp.val(), def = $(this).data('currentval');
@@ -58,7 +88,7 @@ jQuery.fn.settingsTree = function(opts){
 				}
 				$(this).removeClass('changed');
 			})
-		}
+		},
 		inputchange = function(){
 			var $inp = $(this), $inpa = $inp.parents('.input_area:first, .protect_area:first'), val = $inp.val();
 			if ($inp.is(':checkbox')){
@@ -69,11 +99,6 @@ jQuery.fn.settingsTree = function(opts){
 			}else{
 				$inpa.addClass('changed');
 			}
-		}
-		init_area = function(){
-			$root.on('change','input, textarea, select',inputchange);
-			$root.on('settingstree_save',savelevel);
-			$root.on('settingstree_cancel',resetlevel);
 		},
 		has_pending = function(){
 			return (pending || $root.has('.input_area.changed, .protect_area.changed').length);
@@ -82,55 +107,67 @@ jQuery.fn.settingsTree = function(opts){
 			var $hier = $('.settingstree_left_column');
 			$hier.find('.highlighted_level').removeClass('highlighted_level');
 			$hier.find('[data-path="'+open_level+'"]').addClass('highlighted_level');
-		};
-	if (typeof opts.explorertree_id === 'string'){
-		$(document).ready(function(){
-			$('#'+opts.explorertree_id).on('tree_selected',function settingstree_selectlevel(event,id){
-				if (has_pending()){
-					$('.settingstree_error_area').html($("<div class='error'><h4>"+getLang('pending_change')+"</h4><p>"+getLang('pending_change_explain')+"</p></div>"));
-					return;
-				}
-				$root.html('<div class="settingstree_error_area"><div class="notify">'+getLang('loading_level')+'</div></div>');
-				$.post(DOKU_BASE + 'lib/exe/ajax.php',
-					{ call:'plugin_settingstree', operation: 'loadlevel', pluginname: pluginname, path: id, sectok: token },
-					function(r){
-						if (r.token) token = r.token;
-						if (r.error) alert(r.msg);
-						if (r.path){ path = r.path;	}
-						if (r.html){ 
-							$root.html(r.html); 
-							var key = $('.settingstree_left_column').data('current');
-							if (key){
-								settingstree_show_in_hierarchy(key,path);
-							}
-						} 
-						else alert('Error: html not loaded!');
-					}
-				);	
-			}); 
-		});
-	}
-	$root.on('show_in_hierarchy',function(event,key,open_level){
-		var $left_col = $('.settingstree_left_column'), current = $left_col.data('current')||null;
-		if (current !== key){
-			$left_col.html('<div class="notify">'+getLang('loading_hierarchy')+'</div>');
+		},
+		selectlevel = function(id){
+			if (has_pending()){
+				$root.find('.settingstree_error_area').html($("<div class='error'><h4>"+getLang('pending_change')+"</h4><p>"+getLang('pending_change_explain')+"</p></div>"));
+				return;
+			}
+			$root.html('<div class="settingstree_error_area"><div class="notify">'+getLang('loading_level')+'</div></div>');
 			$.post(DOKU_BASE + 'lib/exe/ajax.php',
-				{ call:'plugin_settingstree', operation: 'show_hierarchy', pluginname: pluginname, key: key, sectok: token },
+				{ call:'plugin_settingstree', operation: 'loadlevel', pluginname: pluginname, path: id, sectok: token, showtype: _export? 'export' : 'normal', options: opts.options },
 				function(r){
 					if (r.token) token = r.token;
 					if (r.error) alert(r.msg);
+					if (r.path){ path = r.path;	}
 					if (r.html){ 
-						$left_col.html(r.html);
-						$left_col.data('current',key);
-						open_hierarchy_level(open_level);
-					}
+						$root.html(r.html); 
+						var key = $('.settingstree_left_column').data('current');
+						if (key){
+							show_in_hierarchy(key,path);
+						}
+					} 
 					else alert('Error: html not loaded!');
 				}
 			);	
-		}else{
-			open_hierarchy_level(open_level);
+		},
+		show_in_hierarchy = function(key,open_level){
+			var $left_col = $('.settingstree_left_column'), current = $left_col.data('current')||null;
+			if (current !== key){
+				$left_col.html('<div class="notify">'+getLang('loading_hierarchy')+'</div>');
+				$.post(DOKU_BASE + 'lib/exe/ajax.php',
+					{ call:'plugin_settingstree', operation: 'show_hierarchy', pluginname: pluginname, key: key, sectok: token },
+					function(r){
+						if (r.token) token = r.token;
+						if (r.error) alert(r.msg);
+						if (r.html){ 
+							$left_col.html(r.html);
+							$left_col.data('current',key);
+							open_hierarchy_level(open_level);
+						}
+						else alert('Error: html not loaded!');
+					}
+				);	
+			}else{
+				open_hierarchy_level(open_level);
+			}
 		}
-	});
-	init_area();
-	
+		;
+	if (typeof opts.explorertree_id === 'string'){
+		$(document).ready(function(){
+			$('#'+opts.explorertree_id).on('tree_selected',function (event,id){ selectlevel(id); }); 
+		});
+	}
+	if (!(path = $root.find('#config__manager').data('path'))){ path = ':';}
+	if (typeof opts.path === 'string' && opts.path !== path){
+		selectlevel(opts.path);
+	}
+	// we're delegating the listener to the $root (the container) so events will bubble up to it for any dynamically placed children.
+	$root.on('select_level', function (event,id){ selectlevel(id); });
+	$root.on('show_in_hierarchy',function(event,key,open_level){ show_in_hierarchy(key,open_level); });
+	$root.on('change','input, textarea, select',inputchange);
+	$root.on('settingstree_save',savelevel);
+	$root.on('settingstree_export',exportlevel);
+	$root.on('settingstree_cancel',resetlevel);
+	return this;
 };

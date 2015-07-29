@@ -119,6 +119,16 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 				'return' => 'string html (echo-able or sendable via ajax)',
                 );
 		$result[] = array(
+                'name'   => 'showExportHtml',
+                'desc'   => 'Returns embeddable html of the configuration area only (export-config version).',
+				'parameters' => array(
+					'pluginname' => "string plugin's name which's settings are displayed e.g. 'dw2pdf'.",
+					'folder' => "string the folder opened by default. You should use ':' (colon) to separate namespaces.",
+					'options' => "array the options for exporting (e.g. title of export, onsuccess callback)",
+					),
+				'return' => 'string html (echo-able or sendable via ajax)',
+                );
+		$result[] = array(
                 'name'   => 'showHierarchy',
                 'desc'   => 'Returns embeddable html of the hierarchy area only.',
 				'parameters' => array(
@@ -137,6 +147,18 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 					'results' => "OUT array the results of save: array('success' => true/false, 'error' => 'true/false', 'msg' => 'Changes are saved/Changes are not saved (by lang)')",
 					),
 				'return' => 'string html (echo-able or sendable via ajax)',
+                );
+		$result[] = array(
+                'name'   => 'exportLevel',
+                'desc'   => 'Validates changes and returns nothing on success or the updated embeddable html of the configuration area only with all changes/errors on error.',
+				'parameters' => array(
+					'pluginname' => "string plugin's name which's settings are displayed e.g. 'dw2pdf'.",
+					'folder' => "string the folder (level) which's  values are going to be saved. You should use ':' (colon) to separate namespaces.",
+					'data' => "array the data to be saved. required structure: array('settingsname'=>array('protect'=>1/0, 'config'=>'newvalue')). Requires only the parameters that are changed!",
+					'results' => "OUT array the results of save: array('success' => true/false, 'error' => 'true/false', 'msg' => 'Changes are saved/Changes are not saved (by lang)')",
+					'options' => "array the options for exporting (e.g. title of export, onsuccess callback)",
+					),
+				'return' => 'mixed null on success, string html (echo-able or sendable via ajax) on error',
                 );
 		$result[] = array(
                 'name'   => 'getConf',
@@ -220,7 +242,7 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 		$e = $this->init_explorertree();
 		$ret = "";
 		$ret .= "<div class='settingstree_left'>";
-		$ret .= $e->htmlExplorer('settingstree',':');
+		$ret .= $e->htmlExplorer('settingstree',':',$folder);
 		$ret .= "<div class='settingstree_left_column'></div></div>";
 		$ret .= "<div class='settingstree_right'><form id='settingstree_area' class='settingstree_area' method='GET' onsubmit='return false;'>";
 		$level = $set->getLevel($folder);
@@ -238,14 +260,35 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 			$results['success'] = true;
 		}else{
 			$results['error'] = true;
-			$results['msg'] = $this->getLang('changes_not_saved');
+			$results['msg'] = $this->getLang('invalid_values')."<br/>".$this->getLang('changes_not_saved');
 			$results['success'] = false;
 		}
 		return $level->showHtml();
 	}
+	function exportLevel($pluginname,$folder,$data,&$results,$options){
+		$set = $this->_loadSettings($pluginname);
+		$level = $set->getLevel($folder)->getExport($options);
+		if ($level->checkValues($data)){ // the values are okay, and it managed to save to file/cache
+			$results['error'] = false;
+			$results['values'] = $level->getAllValues();
+//			$results['msg'] = $this->getLang('changes_saved');
+			$results['success'] = true;
+			return null;
+		}else{
+			$results['error'] = true;
+			$results['msg'] = $this->getLang('invalid_values');
+			$results['success'] = false;
+			return $level->showHtml();
+		}
+	}
 	function showHtml($pluginname,$folder){
 		$set = $this->_loadSettings($pluginname);
 		$level = $set->getLevel($folder);
+		return $level->showHtml();
+	}
+	function showExportHtml($pluginname,$folder,array $options = array()){
+		$set = $this->_loadSettings($pluginname);
+		$level = $set->getLevel($folder)->getExport($options);
 		return $level->showHtml();
 	}
 	

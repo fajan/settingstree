@@ -32,37 +32,60 @@ class action_plugin_settingstree extends DokuWiki_Action_Plugin {
 		if (!checkSecurityToken()){
 			$data = array('error'=>true,'msg'=>'invalid security token!');
 		}else{
-		switch($INPUT->str('operation')){
-			case 'loadlevel':
-				if (!($helper = plugin_load('helper', 'settingstree'))){
-					$data = array('error'=>true,'msg'=>"Can't load tree helper.");
+			switch($INPUT->str('operation')){
+				case 'loadlevel':
+					if (!($helper = plugin_load('helper', 'settingstree'))){
+						$data = array('error'=>true,'msg'=>"Can't load tree helper.");
+						break;
+					}
+					switch ($INPUT->str('showtype','normal')){
+						case 'export':
+							$data = array(
+								'html' => $helper->showExportHtml($INPUT->str('pluginname'),':'.ltrim($INPUT->str('path'),':'),$INPUT->arr('options',array())),
+								'path'=> ':'.ltrim($INPUT->str('path'),':'),
+							);
+							break;
+						case 'normal':
+						default:
+							$data = array(
+								'html' => $helper->showHtml($INPUT->str('pluginname'),':'.ltrim($INPUT->str('path'),':')),
+								'path'=> ':'.ltrim($INPUT->str('path'),':')
+							);
+					}
+					if (!$data['html']) {$data['error'] = true; $data['msg'] = "Can't load level html.";}
 					break;
-				}
-				$data = array('html' => $helper->showHtml($INPUT->str('pluginname'),':'.ltrim($INPUT->str('path'),':')),'path'=> ':'.ltrim($INPUT->str('path'),':'));
-				if (!$data['html']) {$data['error'] = true; $data['msg'] = "Can't load level html.";}
-				break;
-			case 'show_hierarchy':
-				if (!($helper = plugin_load('helper', 'settingstree'))){
-					$data = array('error'=>true,'msg'=>"Can't load tree helper.");
+				case 'show_hierarchy':
+					if (!($helper = plugin_load('helper', 'settingstree'))){
+						$data = array('error'=>true,'msg'=>"Can't load tree helper.");
+						break;
+					}
+					$data = array('html' => $helper->showHierarchy($INPUT->str('pluginname'),$INPUT->str('key')));
+					if (!$data['html']) {$data['error'] = true; $data['msg'] = "Can't load level html.";}
 					break;
-				}
-				$data = array('html' => $helper->showHierarchy($INPUT->str('pluginname'),$INPUT->str('key')));
-				if (!$data['html']) {$data['error'] = true; $data['msg'] = "Can't load level html.";}
-				break;
-			case 'savelevel':
-				if (!($helper = plugin_load('helper', 'settingstree'))){
-					$data = array('error'=>true,'msg'=>"Can't load tree helper.");
+				case 'savelevel':
+					if (!($helper = plugin_load('helper', 'settingstree'))){
+						$data = array('error'=>true,'msg'=>"Can't load tree helper.");
+						break;
+					}
+					$html = $helper->saveLevel($INPUT->str('pluginname'),':'.ltrim($INPUT->str('path'),':'),$INPUT->arr('data'),$data);
+					$data['html'] = $html;
+					
+					if (!$data['html']) {$data['error'] = true; $data['msg'] = "Can't load level html.";}
 					break;
-				}
-				$html = $helper->saveLevel($INPUT->str('pluginname'),':'.ltrim($INPUT->str('path'),':'),$INPUT->arr('data'),$data);
-				$data['html'] = $html;
-				
-				if (!$data['html']) {$data['error'] = true; $data['msg'] = "Can't load level html.";}
-				break;
-			default:
-				$data = array('error'=>true,'msg'=>'Unknown operation: '.$INPUT->str('operation'));
-				break;
-		}
+				case 'exportlevel':
+					if (!($helper = plugin_load('helper', 'settingstree'))){
+						$data = array('error'=>true,'msg'=>"Can't load tree helper.");
+						break;
+					}
+					$html = $helper->exportLevel($INPUT->str('pluginname'),':'.ltrim($INPUT->str('path'),':'),$INPUT->arr('data'),$data,$INPUT->arr('options',array()));
+					$data['html'] = $html;					
+					// we expect null for success (export will start with the options) and only need to display the configurations again when there is an error.
+					if (!$data['html'] && !$data['success']) {$data['error'] = true; $data['msg'] = "Can't load level html.";}
+					break;
+				default:
+					$data = array('error'=>true,'msg'=>'Unknown operation: '.$INPUT->str('operation'));
+					break;
+			}
 		//data
 		//json library of DokuWiki
 		}
