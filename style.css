@@ -238,8 +238,28 @@ body > #settingstree_grayout{	/* background-grayout covering the whole screen, a
 	border: 1px solid #888;
 	box-shadow: 2px 1px 4px #000;
 	background: #fff;
+	z-index: 1;
 }
-
+#settingstree_export_popup_container > .settingstree_export_popup_close_button{ /* button at the top right corner of the layer.*/
+	position: absolute;
+	z-index: 2;
+	top: 5%;
+	line-height: 18px;
+	font-size: 20px;
+	content: "x";
+	font-weight: bold;
+	text-align: center;
+	margin-left: -15px;
+	left: 488px;
+	cursor: pointer;
+	width: 20px;
+	height: 20px;
+	background: #fff;
+	border: 2px solid black;
+	border-radius: 50%;
+	padding: 2px;
+	box-shadow: 1px 0px 2px #000;
+}
 
 .tpl_dokuwiki  #dokuwiki__pagetools {
  z-index: 3; /* this is needed, because we use absolute positioned buttons, and it looks crappy with default template... other templates should include this for their static positioned parts anyway... */

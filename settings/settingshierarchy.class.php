@@ -12,7 +12,8 @@ class settingshierarchy{
 	private $_defaults = array();			// the defaults for each settings (from plugin config) array by key=>default
 	private $_values = array();				// the values and protections set by admins in admin pages. array by path => [key => [ prot, value]];
 	
-	private $_lang = null;					// to be used for getLang
+	private $_lang = null;					// to be used for getLang (lang of the _pluginname)
+	private static $_config_lang = null;		// to be used if needed (lang of the config plugin)
 	private static $conf_local = null;		// local configurations (only for plugins)
 	private static $conf_protected = null;	// protected configurations (only for plugins)
 	public static $cache = null;			// memcache
@@ -24,17 +25,23 @@ class settingshierarchy{
 		$this->_meta = $meta;
 		$this->_defaults = $defaults;
 		$this->_values = $values;
+				
+
 	}
-	
 	function getLang($key){
-		$lang = $this->_getLangInited();
+		return $this->_getLang($key);
+	}
+	function _getLang($key,$config_plugin = false){
+		$lang = $this->_getLangInited($config_plugin);
 		global $conf;
 		if (!($ret = @$lang[$conf['lang']][$key])){
 			if (!($ret = @$lang['en'][$key])){
-				// we need to check, if it's '{key}_o_{option}' from a plugin setting, and return null if it is, but translation does not exists, to display only the 'option' part of it.
-				if (!preg_match('~^('.implode('|',array_keys($this->_meta)).')_o_~',$key)){
-					$ret = '{msgid:'.$key.'}'; // else we need to return the something if we want to display, that the key is missing instead of simply ignore a message...
-					// Note: if lang keys needs to be html escaped then there is a conceptual problem about msgids...
+				// we need to check, if it's '{setting}_o_{key}' from a plugin setting, and return null if it is, but translation does not exists, to display only the 'key' part of it.
+				if (!preg_match('~^(?:'.implode('|',array_keys($this->_meta)).')_o_(.*)$~',$key,$match)){
+					if (!$config_plugin && ($ret = $this->_getLang($key,true)) === null){	// check if it a key for config plugin.
+						// Note: if lang keys needs to be html escaped then there is a conceptual problem about msgids...
+						$ret = "{msgid:{$key}}"; // else we need to return the something if we want to display, that the key is missing instead of simply ignore a message...
+					}
 				/** 	imagine a situation: 
 				 *	function resultMessage($error){
 				 *		$message = '';
@@ -54,39 +61,51 @@ class settingshierarchy{
 				 *		By ignoring missing messages, the user will see: 	 'Your data is  saved!'; 
 				 */
 				}
+				else{
+					if (($ret = $this->_getLang($match[1],$config_plugin)) === "{msgid:{$key}}");	// try to get the 'key' part as localized from the '{setting}_o_{key}'
+						return null; // if there is not localisation for the key, then return null.
+				}
 			}
 		}
 		return $ret;
 	}
 	
-	private function _getLangInited(){
-		if ($this->_lang === null){
+	private function _getLangInited($config_plugin = false){
+		if($config_plugin){
+			$_lang = &$this->_config_lang;
+		}else{ 
+			$_lang = &$this->_lang;
+		}
+		if ($_lang === null){
+			// set the $_lang as a reference for the lang array we're updating
 			global $conf;
+			$_lang = array();
+			$type = $config_plugin ? 'lang' : 'settings';
+			$pluginname = ($config_plugin ? 'config' : $this->_pluginname);
 			$ls = array($conf['lang']);
 			if ($conf['lang'] !== 'en') $ls[] = 'en';	// English is always the fallback. 
-			//TODO: update for multi-level localization, sew how DW handles that...  ['de_DE-informal','de_DE','de','en_GB','en']
 			
 			foreach ($ls as $l){	// for all language we need
-				$path = DOKU_INC."lib/plugins/{$this->_pluginname}/lang/{$l}/settings.php";
+				$path = DOKU_INC."lib/plugins/{$pluginname}/lang/{$l}/{$type}.php";
 				if (static::$cache 	//if caching is enabled
-					&& @filemtime($path) <= static::$cache->get("plugin_{$this->_pluginname}_lang_{$l}_settings_time") 	// and cached version is old enough (note: cache is not bound to settingstree: "plugin_{name}_lang_{lang}_type[_time]" is usable by all plugins
-					&& $ll = static::$cache->get("plugin_{$this->_pluginname}_lang_{$l}_settings")						// and cache contains the language array
+					&& @filemtime($path) <= static::$cache->get("plugin_{$pluginname}_lang_{$l}_{$type}_time") 	// and cached version is old enough (note: cache is not bound to settingstree: "plugin_{name}_lang_{lang}_type[_time]" is usable by all plugins
+					&& $ll = static::$cache->get("plugin_{$pluginname}_lang_{$l}_{$type}")						// and cache contains the language array
 					){
-					$this->_lang[$l] = $ll;	
+					$_lang[$l] = $ll;	
 					continue; // use that, no need to include the files.
 				}
 				if (file_exists($path)){
 					$lang = array();
 					@include($path);
-					$this->_lang[$l] = $lang;
+					$_lang[$l] = $lang;
 					if (static::$cache){	// update the cache so next we don't need to read filesystem
-						static::$cache->set("plugin_{$this->_pluginname}_lang_{$l}_settings",$lang,0);
-						static::$cache->set("plugin_{$this->_pluginname}_lang_{$l}_settings_time",filemtime($path),0);
+						static::$cache->set("plugin_{$pluginname}_lang_{$l}_{$type}",$lang,0);
+						static::$cache->set("plugin_{$pluginname}_lang_{$l}_{$type}_time",filemtime($path),0);
 					}
 				}
 			}
 		}
-		return $this->_lang;
+		return $_lang;
 	}
 	function getPluginName(){return $this->_pluginname;}
 	function getLevel($folder){

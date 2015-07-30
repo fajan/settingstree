@@ -6,7 +6,9 @@ function settingstree_show_export(opts){
 		$grayout = $('<div id="settingstree_grayout"></div>').appendTo('body'),
 		$container = $('<div id="settingstree_export_popup_container"></div>').appendTo($grayout),
 		$dialog = $('<div class="settingstree_export_popup_layer"></div>').appendTo($container),
+		$close = $('<div class="settingstree_export_popup_close_button"> x </div>').appendTo($container),
 		$form = $('<form class="settingstree_area" method="get"></form>').appendTo($dialog);
+	$close.on('click', function(e){ $form.trigger('settingstree_close');});
 	opts._export = true;
 	$form.settingsTree(opts);
 	$form.on('settingstree_export_complete',function(e,values){
@@ -72,7 +74,7 @@ jQuery.fn.settingsTree = function(opts){
 				function(r){
 					if (r.token) token = r.token;
 					if (r.html){ $root.html(r.html);	}
-					if (r.success){		$root.trigger('settingstree_export_complete',r.values);					}
+					if (r.success){		$root.trigger('settingstree_export_complete',r.values,changes);					}
 					else{			$root.find('.settingstree_error_area').html($("<div class='error'>"+(r.msg||"fail")+"</div>"));		}
 				}
 			);	
