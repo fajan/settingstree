@@ -17,6 +17,7 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 	private $explorer_registered = false;	// flag to indicate that the callbacks/options are registered to explorertree or not.
 	private $_settingsHierarchy = array();	// settings hierarchy for a plugin array(pluginname => hierarchy)
 	
+	
 	function get_explorer(){
 		if (!$this->explorer_helper){
 			$this->explorer_helper = plugin_load('helper','explorertree');
@@ -50,7 +51,7 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 		if ($this->memcache === false){
 			$this->memcache = plugin_load('helper','memcache');
 			// we don't want to use cache if it does not give performance upgrade
-			if ($this->memcache->emulated()){
+			if ($this->memcache && $this->memcache->emulated()){
 				$this->memcache = null;
 			}
 			settingshierarchy::$cache = $this->memcahce;
@@ -169,7 +170,16 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 					),
 				'return' => "array effective values for each key e.g. array('settingsname'=>1, 'settingsname2'=>'1x3')",
                 );
-		
+		$result[] = array(
+                'name'   => 'setExportConf',
+                'desc'   => 'Sets an export (temporary) configuration for a plugin, which overrides the settings as long as it does not violate protection (of the current page). The set values lasts until the end of current request.',
+				'parameters' => array(
+					'pluginname' => "string plugin's name which's settings are displayed e.g. 'dw2pdf'.",
+					'folder' => "string the folder (level) which's  values are overridden. You should use ':' (colon) to separate namespaces.",
+					'conf' => "array the array of configuration overrides by key=>value.",
+					),
+				'return' => "array the configuration values that are not changed (because of protection). I.e. empty array if all values can be changed.",
+                );
         return $result;
     }
 
@@ -180,7 +190,12 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 		return @filemtime(DOKU_SETTINGS_DIR."/{$pluginname}.meta.json") < $version;
 	}
 
-	
+	function setExportConf ($pluginname,$folder, array $values){
+		$set = $this->_loadSettings($pluginname);
+		$level = $set->getLevel($folder);
+		return $level->setExportValues($values);
+		
+	}
 	function registerSettings($pluginname,$version,$meta,$defaults){
 		if (!file_put_contents($file = DOKU_SETTINGS_DIR."/{$pluginname}.meta.json",json_encode($meta))
 			||
