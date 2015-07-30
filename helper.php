@@ -17,6 +17,7 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 	private $explorer_registered = false;	// flag to indicate that the callbacks/options are registered to explorertree or not.
 	private $_settingsHierarchy = array();	// settings hierarchy for a plugin array(pluginname => hierarchy)
 	
+	
 	function get_explorer(){
 		if (!$this->explorer_helper){
 			$this->explorer_helper = plugin_load('helper','explorertree');
@@ -50,7 +51,7 @@ class helper_plugin_settingstree extends DokuWiki_Plugin {
 		if ($this->memcache === false){
 			$this->memcache = plugin_load('helper','memcache');
 			// we don't want to use cache if it does not give performance upgrade
-			if ($this->memcache->emulated()){
+			if ($this->memcache && $this->memcache->emulated()){
 				$this->memcache = null;
 			}
 			settingshierarchy::$cache = $this->memcahce;

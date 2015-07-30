@@ -10,8 +10,8 @@ function settingstree_show_export(opts){
 	opts._export = true;
 	$form.settingsTree(opts);
 	$form.on('settingstree_export_complete',function(e,values){
+		$form.trigger('settingstree_close'); // clean up before calling the on_complete.
 		window[opts.on_complete].call(null,values);	// call the on_complete callback.
-		$grayout.remove();
 	});
 	$form.on('settingstree_close', function(){$grayout.remove();}); // destroying the root with jQuery automatically removes all registered data from the memory.
 	return true; // return success (popup fill be shown).
