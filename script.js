@@ -11,9 +11,9 @@ function settingstree_show_export(opts){
 	$close.on('click', function(e){ $form.trigger('settingstree_close');});
 	opts._export = true;
 	$form.settingsTree(opts);
-	$form.on('settingstree_export_complete',function(e,values){
+	$form.on('settingstree_export_complete',function(e,values,changes){
 		$form.trigger('settingstree_close'); // clean up before calling the on_complete.
-		window[opts.on_complete].call(null,values);	// call the on_complete callback.
+		window[opts.on_complete].call(null,values,changes);	// call the on_complete callback.
 	});
 	$form.on('settingstree_close', function(){$grayout.remove();}); // destroying the root with jQuery automatically removes all registered data from the memory.
 	return true; // return success (popup fill be shown).
@@ -66,6 +66,14 @@ jQuery.fn.settingsTree = function(opts){
 				}
 			);	
 		},
+		simplify = function(conf){
+			var ret = {};
+			for (var key in conf){
+				if (typeof conf[key] === 'object' && typeof conf[key].config !== undefined)
+					ret[key] = conf[key].config;
+			}
+			return ret;
+		},
 		exportlevel = function(){	// export: we check all data - but not save it, and if it's successful, we are finished. on error we display invalid data an all changes.
 			$root.find('.settingstree_error_area').html($("<div class='notify'>"+getLang('preparing_export')+"</div>"));
 			var changes = getchanged();
@@ -74,7 +82,7 @@ jQuery.fn.settingsTree = function(opts){
 				function(r){
 					if (r.token) token = r.token;
 					if (r.html){ $root.html(r.html);	}
-					if (r.success){		$root.trigger('settingstree_export_complete',r.values,changes);					}
+					if (r.success){		$root.trigger('settingstree_export_complete',[r.values,simplify(changes)]);					}
 					else{			$root.find('.settingstree_error_area').html($("<div class='error'>"+(r.msg||"fail")+"</div>"));		}
 				}
 			);	
