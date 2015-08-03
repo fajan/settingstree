@@ -222,14 +222,14 @@ body > #settingstree_grayout{	/* background-grayout covering the whole screen, a
 #settingstree_grayout > #settingstree_export_popup_container{ /* container helper to positioning (always center, always 5-5% of screen on top and bottom is empty)*/
    position: relative;
    width: 0px;
-   margin: 0 auto 0;
+   margin: 0 auto;
    height: 100%;
-   padding: 5% 0;
+   padding: 100px 0;
    box-sizing: border-box;
 }
 
 #settingstree_export_popup_container > .settingstree_export_popup_layer{ /* box that contains the popup contents. negative margin to force centered layout and automatic scrolling inside because the it is fixed.*/
-	position: static;
+	position: absolute;
 	margin: 0 -488px;
 	width: 970px;
 	padding: 2px;
@@ -240,15 +240,16 @@ body > #settingstree_grayout{	/* background-grayout covering the whole screen, a
 	background: #fff;
 	z-index: 1;
 }
-#settingstree_export_popup_container > .settingstree_export_popup_close_button{ /* button at the top right corner of the layer.*/
+#settingstree_export_popup_container > .settingstree_export_popup_close_button:after{ /* button at the top right corner of the layer.*/
 	position: absolute;
 	z-index: 2;
-	top: 5%;
+	top: 100px;
 	line-height: 18px;
 	font-size: 20px;
 	content: "x";
 	font-weight: bold;
 	text-align: center;
+	margin-top: -15px;
 	margin-left: -15px;
 	left: 488px;
 	cursor: pointer;
